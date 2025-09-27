@@ -129,7 +129,19 @@ async def create_product(
     await db.commit()
     await db.refresh(new_product)
 
-    # 6. Devolvemos el producto completo, con sus variantes (si las tuviera)
+    # --- INICIO DE LA CORRECCIÓN ---
+    # 6. Si se proveyó talle y stock, crear una variante por defecto
+    if talle and stock > 0:
+        default_variant = VarianteProducto(
+            producto_id=new_product.id,
+            tamanio=talle, # Usamos el talle del formulario
+            color=color or "default", # Usamos el color del formulario o un valor por defecto
+            cantidad_en_stock=stock # Usamos el stock del formulario
+        )
+        db.add(default_variant)
+        await db.commit()
+
+    # 7. Devolvemos el producto completo, con sus variantes (incluida la nueva)
     query = select(Producto).options(joinedload(Producto.variantes)).filter(Producto.id == new_product.id)
     result = await db.execute(query)
     created_product = result.scalars().unique().first()
@@ -155,11 +167,25 @@ async def update_product(product_id: int, product_in: product_schemas.ProductUpd
     return updated_product
 
 # --- DELETE (CORREGIDO, sin cambios funcionales pero consistente) ---
-@router.delete("/{product_id}", status_code=status.HTTP_200_OK, summary="Eliminar un producto (Solo Admins)")
+@router.delete("/{product_id}", status_code=status.HTTP_200_OK, summary="Eliminar un producto y sus variantes (Solo Admins)")
 async def delete_product(product_id: int, db: AsyncSession = Depends(get_db), current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)):
-    product_db = await db.get(Producto, product_id)
+    # 1. Obtenemos el producto y cargamos sus variantes explícitamente
+    result = await db.execute(
+        select(Producto).options(joinedload(Producto.variantes)).where(Producto.id == product_id)
+    )
+    product_db = result.scalars().first()
+
     if not product_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+
+    # 2. Iteramos y eliminamos cada una de las variantes asociadas
+    for variant in product_db.variantes:
+        await db.delete(variant)
+    
+    # 3. Una vez eliminadas las variantes, eliminamos el producto principal
     await db.delete(product_db)
+    
+    # 4. Guardamos todos los cambios en la base de datos
     await db.commit()
-    return {"message": "Product deleted successfully"}
+    
+    return {"message": "Producto y sus variantes eliminados exitosamente"}

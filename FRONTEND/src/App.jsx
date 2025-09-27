@@ -1,0 +1,167 @@
+import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+
+// --- Store y Contexto ---
+import { useAuthStore } from './stores/useAuthStore';
+
+// --- Componentes ---
+import Navbar from '@/components/common/Navbar.jsx';
+import Footer from '@/components/common/Footer.jsx';
+import DropdownMenu from '@/components/common/DropdownMenu.jsx';
+import ProtectedRoute from '@/components/common/ProtectedRoute.jsx';
+import CartNotificationModal from '@/components/products/CartNotificationModal.jsx';
+import SearchModal from '@/components/common/SearchModal.jsx';
+import Chatbot from '@/components/common/Chatbot.jsx';
+import AdminLayout from '@/pages/AdminLayout.jsx';
+import Spinner from '@/components/common/Spinner.jsx';
+
+// --- Páginas (Carga Diferida) ---
+const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
+// ... (el resto de las importaciones lazy se mantienen igual)
+const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
+const ProductPage = lazy(() => import('@/pages/ProductPage.jsx'));
+const CartPage = lazy(() => import('@/pages/CartPage.jsx'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage.jsx'));
+const SearchResultsPage = lazy(() => import('@/pages/SearchResultsPage.jsx'));
+const PaymentSuccessPage = lazy(() => import('@/pages/PaymentSuccessPage.jsx'));
+const PaymentFailurePage = lazy(() => import('@/pages/PaymentFailurePage.jsx'));
+const PaymentPendingPage = lazy(() => import('@/pages/PaymentPendingPage.jsx'));
+const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage.jsx'));
+const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage.jsx'));
+const AdminProductFormPage = lazy(() => import('@/pages/AdminProductFormPage.jsx'));
+const AdminProductVariantsPage = lazy(() => import('@/pages/AdminProductVariantsPage.jsx'));
+const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage.jsx'));
+const AdminOrderDetailPage = lazy(() => import('@/pages/AdminOrderDetailPage.jsx'));
+const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage.jsx'));
+const AboutPage = lazy(() => import('@/pages/AboutPage.jsx'));
+const AccountPage = lazy(() => import('@/pages/AccountPage.jsx'));
+const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
+const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
+
+const AppContent = () => {
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const logoRef = useRef(null);
+  const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
+  const [addedItem, setAddedItem] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
+  // 1. Restaurar el estado para la posición del logo
+  const [logoPosition, setLogoPosition] = useState(null);
+
+  const { isAuthLoading, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const handleSetAddedItem = (item) => setAddedItem(item);
+  const handleOpenSearch = () => setIsSearchOpen(true);
+  const handleCloseSearch = () => setIsSearchOpen(false);
+  const handleOpenCartNotification = () => setIsCartNotificationOpen(true);
+  const handleCloseCartNotification = () => setIsCartNotificationOpen(false);
+
+  useEffect(() => {
+    let guestId = localStorage.getItem('guestSessionId');
+    if (!guestId) {
+      guestId = uuidv4();
+      localStorage.setItem('guestSessionId', guestId);
+    }
+  }, []);
+
+  // 2. Restaurar el efecto que calcula la posición del logo
+  useEffect(() => {
+    const updatePosition = () => {
+      if (logoRef.current) {
+        setLogoPosition(logoRef.current.getBoundingClientRect());
+      }
+    };
+    // Da un pequeño respiro al navegador para asegurar que todo esté renderizado
+    requestAnimationFrame(updatePosition);
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, []);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsCartNotificationOpen(false);
+    setIsSearchOpen(false);
+    document.body.classList.remove('menu-open');
+  }, [location]);
+
+  useEffect(() => {
+    document.body.classList.toggle('menu-open', isMenuOpen || isCartNotificationOpen || isSearchOpen);
+  }, [isMenuOpen, isCartNotificationOpen, isSearchOpen]);
+
+  if (isAuthLoading) {
+    return <Spinner message="Verificando sesión..." />;
+  }
+
+  return (
+    <div className="page-wrapper">
+      <Navbar
+        isMenuOpen={isMenuOpen}
+        onToggleMenu={toggleMenu}
+        onOpenSearch={handleOpenSearch}
+        ref={logoRef}
+      />
+      <Suspense fallback={<Spinner message="Cargando página..." />}>
+        <Routes>
+            {/* ... (todas las rutas se mantienen igual) ... */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/shop" element={<CatalogPage />} />
+            <Route path="/catalog/:categoryName" element={<CatalogPage />} />
+            <Route
+                path="/product/:productId"
+                element={<ProductPage
+                onOpenCartModal={handleOpenCartNotification}
+                onSetAddedItem={handleSetAddedItem}
+                />}
+            />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/payment/success" element={<PaymentSuccessPage />} />
+            <Route path="/payment/failure" element={<PaymentFailurePage />} />
+            <Route path="/payment/pending" element={<PaymentPendingPage />} />
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="products" element={<AdminProductsPage />} />
+                <Route path="products/new" element={<AdminProductFormPage />} />
+                <Route path="products/edit/:productId" element={<AdminProductFormPage />} />
+                <Route path="products/:productId/variants" element={<AdminProductVariantsPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="orders/:orderId" element={<AdminOrderDetailPage />} />
+            </Route>
+        </Routes>
+      </Suspense>
+      <Footer />
+      {/* 3. Pasar la prop que faltaba */}
+      <DropdownMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} logoPosition={logoPosition} />
+      {isCartNotificationOpen && <CartNotificationModal item={addedItem} onClose={handleCloseCartNotification} />}
+      <SearchModal isOpen={isSearchOpen} onClose={handleCloseSearch} />
+      <Chatbot />
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
+
+export default App;

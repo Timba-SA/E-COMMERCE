@@ -100,10 +100,19 @@ async def create_manual_sale(sale_data: admin_schemas.ManualSaleCreate, db: Asyn
 
 @router.get("/users", response_model=List[user_schemas.UserOut])
 async def get_users(db: Database = Depends(get_db_nosql)):
-    users = []
-    async for user in db.users.find({}):
-        users.append(user_schemas.UserOut(**user))
-    return users
+    users_cursor = db.users.find({})
+    users_list = await users_cursor.to_list(length=None)
+    
+    # Procesa la lista para asegurar que el ID es un string
+    processed_users = []
+    for user_doc in users_list:
+        # Pydantic v2 usa model_validate para parsear un dict.
+        # El schema UserOut ya se encarga de alias 'id' a '_id' y convertirlo a string.
+        # Esto asegura que la conversión se haga de forma explícita y robusta.
+        validated_user = user_schemas.UserOut.model_validate(user_doc)
+        processed_users.append(validated_user)
+        
+    return processed_users
 
 @router.put("/users/{user_id}/role", response_model=user_schemas.UserOut, summary="Actualizar rol de un usuario")
 async def update_user_role(user_id: str, user_update: user_schemas.UserUpdateRole, db: Database = Depends(get_db_nosql)):

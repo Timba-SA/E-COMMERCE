@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database.database import engine
 from database.models import Base
-from routers import health_router, auth_router, products_router, cart_router, admin_router, chatbot_router, checkout_router
+from routers import health_router, auth_router, products_router, cart_router, admin_router, chatbot_router, checkout_router, orders_router, user_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,3 +54,5 @@ app.include_router(cart_router.router)
 app.include_router(admin_router.router)
 app.include_router(chatbot_router.router)
 app.include_router(checkout_router.router)
+app.include_router(orders_router.router)
+app.include_router(user_router.router)

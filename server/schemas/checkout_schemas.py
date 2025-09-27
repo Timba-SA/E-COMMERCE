@@ -1,20 +1,35 @@
-# En schemas/checkout_schemas.py
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import Optional
+from . import cart_schemas
 
-# Importamos el schema del carrito que ya tenías
-from . import cart_schemas 
+# --- NUEVO: Molde para la dirección de envío ---
+class ShippingAddress(BaseModel):
+    firstName: str
+    lastName: str
+    streetAddress: str
+    comments: Optional[str] = None
+    city: str
+    postalCode: str
+    country: str
+    state: str
+    phone: str
 
-# --- INICIO DE LO NUEVO ---
-# Este es el molde para cuando el usuario paga con tarjeta directamente en tu web (Checkout API)
+# --- NUEVO: Molde para la petición de preferencia de pago ---
+# Ahora el frontend nos enviará el carrito Y la dirección
+class PreferenceRequest(BaseModel):
+    cart: cart_schemas.Cart
+    shipping_address: ShippingAddress
+
+# --- ACTUALIZADO: El pago por API también necesita la dirección ---
 class ApiPaymentRequest(BaseModel):
-    token: str                 # El card_token que te da el SDK de MP en el frontend
-    payment_method_id: str     # ej: "visa", "master"
-    installments: int            # Cantidad de cuotas
-    payer_email: EmailStr      # El email del comprador
-    cart: cart_schemas.Cart    # El carrito completo para verificar precios y stock en el backend
+    token: str
+    payment_method_id: str
+    installments: int
+    payer_email: EmailStr
+    cart: cart_schemas.Cart
+    shipping_address: ShippingAddress # Campo añadido
 
-# Una respuesta estándar para el pago por API
+# --- SIN CAMBIOS ---
 class ApiResponse(BaseModel):
     status: str
     message: str

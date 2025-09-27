@@ -1,23 +1,19 @@
-# En routers/checkout_router.py
-
 import mercadopago
 import os
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-# --- Nuestros Módulos ---
 from database.database import get_db
 from database.models import Orden, DetalleOrden, VarianteProducto, Producto
-from schemas import cart_schemas, checkout_schemas  # <-- Schema actualizado
+from schemas import checkout_schemas
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- CONFIGURACIÓN ---
-router = APIRouter(prefix="/api/checkout", tags=["Checkout Híbrido"])
+router = APIRouter(prefix="/api/checkout", tags=["Checkout"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,37 +21,39 @@ sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_TOKEN"))
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# --- FUNCIÓN HELPER CLAVE (El Cerebro) ---
+# 1. HELPER ACTUALIZADO: Ahora acepta la dirección de envío
 async def save_order_and_update_stock(
     db: AsyncSession, 
     usuario_id: str, 
     monto_total: float, 
     payment_id: str, 
     items_comprados: list,
-    metodo_pago: str
+    metodo_pago: str,
+    shipping_address: dict = None # Parámetro opcional para la dirección
 ):
-    """
-    Crea la orden en la base de datos y descuenta el stock. Es ATÓMICA.
-    O todo funciona, o nada se guarda.
-    """
     try:
         new_order = Orden(
-            usuario_id=usuario_id, monto_total=monto_total, estado="Completado",
-            estado_pago="Aprobado", metodo_pago=metodo_pago,
-            payment_id_mercadopago=payment_id
+            usuario_id=usuario_id, 
+            monto_total=monto_total, 
+            estado="Completado",
+            estado_pago="Aprobado", 
+            metodo_pago=metodo_pago,
+            payment_id_mercadopago=payment_id,
+            direccion_envio=shipping_address # Guardamos la dirección en formato JSON
         )
         db.add(new_order)
         await db.flush()
 
         for item in items_comprados:
-            # Normalizamos el item, ya que viene de dos fuentes distintas
             variante_id = int(item.get("id") or item.get("variante_id"))
             cantidad_comprada = int(item.get("quantity"))
             precio_unitario = float(item.get("unit_price") or item.get("price"))
 
             db.add(DetalleOrden(
-                orden_id=new_order.id, variante_producto_id=variante_id,
-                cantidad=cantidad_comprada, precio_en_momento_compra=precio_unitario
+                orden_id=new_order.id, 
+                variante_producto_id=variante_id,
+                cantidad=cantidad_comprada, 
+                precio_en_momento_compra=precio_unitario
             ))
 
             result = await db.execute(
@@ -77,11 +75,12 @@ async def save_order_and_update_stock(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al procesar la orden: {str(e)}")
 
-
-# --- ENDPOINT 1: CHECKOUT PRO (Botón "Pagar con Mercado Pago") ---
+# 2. ENDPOINT DE PREFERENCIA ACTUALIZADO
 @router.post("/create-preference", summary="Crea preferencia para redirigir a MP")
-async def create_preference(cart: cart_schemas.Cart, db: AsyncSession = Depends(get_db)):
-    # ... (Esta lógica es idéntica a la que ya tenías, la dejamos igual porque es sólida)
+async def create_preference(request_data: checkout_schemas.PreferenceRequest, db: AsyncSession = Depends(get_db)):
+    cart = request_data.cart
+    address = request_data.shipping_address
+
     if not cart.items:
         raise HTTPException(status_code=400, detail="El carrito está vacío.")
     
@@ -101,6 +100,15 @@ async def create_preference(cart: cart_schemas.Cart, db: AsyncSession = Depends(
 
     preference_data = {
         "items": items_for_preference,
+        "payer": {
+            "name": address.firstName,
+            "surname": address.lastName,
+            "phone": {"number": address.phone},
+            "address": {
+                "street_name": address.streetAddress,
+                "zip_code": address.postalCode
+            }
+        },
         "back_urls": {"success": f"{FRONTEND_URL}/payment/success"},
         "notification_url": f"{BACKEND_URL}/api/checkout/webhook",
         "external_reference": str(external_reference)
@@ -113,53 +121,9 @@ async def create_preference(cart: cart_schemas.Cart, db: AsyncSession = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear preferencia de MP: {e}")
 
-
-# --- ENDPOINT 2: CHECKOUT API (Formulario de Tarjeta en tu página) ---
-@router.post("/process-payment-api", response_model=checkout_schemas.ApiResponse, summary="Procesa un pago directo vía API")
-async def process_payment_api(request_data: checkout_schemas.ApiPaymentRequest, db: AsyncSession = Depends(get_db)):
-    if not request_data.cart.items:
-        raise HTTPException(status_code=400, detail="El carrito está vacío.")
-
-    # 1. PARANOIA ES SEGURIDAD: NUNCA confíes en el monto del frontend. Lo recalculamos acá.
-    transaction_amount = 0
-    for item in request_data.cart.items:
-        variant = await db.get(VarianteProducto, item.variante_id, options=[joinedload(VarianteProducto.producto)])
-        if not variant or variant.cantidad_en_stock < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Stock insuficiente para {item.name}")
-        transaction_amount += float(variant.producto.precio) * item.quantity
-    
-    payment_data = {
-        "transaction_amount": round(transaction_amount, 2), "token": request_data.token,
-        "installments": request_data.installments, "payment_method_id": request_data.payment_method_id,
-        "payer": {"email": request_data.payer_email},
-        "external_reference": request_data.cart.user_id or request_data.cart.guest_session_id
-    }
-
-    try:
-        payment_response = sdk.payment().create(payment_data)
-        payment = payment_response.get("response", {})
-
-        if payment.get("status") == "approved":
-            # 2. PAGO APROBADO: Guardamos la orden INMEDIATAMENTE. No hay webhook acá.
-            order_id = await save_order_and_update_stock(
-                db=db, usuario_id=payment.get("external_reference"),
-                monto_total=payment.get("transaction_amount"), payment_id=str(payment.get("id")),
-                items_comprados=[item.model_dump() for item in request_data.cart.items],
-                metodo_pago="Tarjeta (API)"
-            )
-            return {"status": "approved", "message": "Pago aprobado y orden creada.", "order_id": order_id, "payment_id": str(payment.get("id"))}
-        else:
-            error_detail = payment.get('status_detail', 'Pago no aprobado.')
-            raise HTTPException(status_code=400, detail=f"Pago no aprobado: {error_detail}")
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al procesar el pago: {e}")
-
-
-# --- ENDPOINT 3: WEBHOOK (Receptor de notificaciones de Checkout Pro) ---
+# 3. WEBHOOK ACTUALIZADO
 @router.post("/webhook", summary="Receptor de notificaciones de Mercado Pago")
 async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    # ... (Esta lógica también es la que ya tenías y es sólida, la reutilizamos)
     data = await request.json()
     if data.get("type") == "payment":
         payment_id = data.get("data", {}).get("id")
@@ -173,10 +137,24 @@ async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_d
         payment_info = payment_info_response["response"]
 
         if payment_info["status"] == "approved":
+            # Extraer la dirección del pagador de la info del pago
+            payer_info = payment_info.get("payer", {})
+            address_info = payer_info.get("address", {})
+            shipping_address_to_save = {
+                "firstName": payer_info.get("first_name"),
+                "lastName": payer_info.get("last_name"),
+                "streetAddress": address_info.get("street_name"),
+                "postalCode": address_info.get("zip_code"),
+                "phone": payer_info.get("phone", {}).get("number")
+            }
+
             await save_order_and_update_stock(
-                db=db, usuario_id=payment_info.get("external_reference"),
-                monto_total=payment_info.get("transaction_amount"), payment_id=str(payment_id),
+                db=db, 
+                usuario_id=payment_info.get("external_reference"),
+                monto_total=payment_info.get("transaction_amount"), 
+                payment_id=str(payment_id),
                 items_comprados=payment_info.get("additional_info", {}).get("items", []),
-                metodo_pago="Mercado Pago"
+                metodo_pago="Mercado Pago",
+                shipping_address=shipping_address_to_save # Pasamos la dirección para guardarla
             )
     return {"status": "ok"}
