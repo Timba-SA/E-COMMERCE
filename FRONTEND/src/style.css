@@ -147,9 +147,6 @@ main {
     color: var(--text-color-inverse);
     margin-left: -2rem;
     line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .nav-right a {
@@ -245,29 +242,24 @@ main {
 }
 
 /* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN FINAL Y CORRECTA) --- */
-/* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN POSTA) --- */
+
 .dropdown-header {
-  display: flex;
-  justify-content: space-between; /* <-- ¡ACÁ ESTÁ EL ARREGLO! */
-  align-items: center;
+  /* Lo dejamos como un bloque simple con posición relativa */
+  position: relative;
   padding: 1.5rem 2rem;
-  position: relative; 
-  flex-shrink: 0;
+  /* La altura es importante para que el botón de cerrar se alinee verticalmente */
+  height: 96px; /* Misma altura que el header principal */
+  flex-shrink: 0; /* Evita que se encoja si el contenido es grande */
 }
 
+/* El botón de cerrar se posiciona de forma absoluta DENTRO del header */
 .close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  width: 28px;
-  height: 36px;
-  position: absolute; /* Se posiciona adentro del header */
-  left: 2rem;       /* Lo clavamos a la izquierda */
+  position: absolute;
+  left: 2rem;
   top: 50%;
-  transform: translateY(-50%); /* Lo centramos verticalmente perfecto */
-  z-index: 10;
-}
+  transform: translateY(-50%); /* Centrado vertical perfecto */
+  z-index: 2004; /* Por encima del logo fantasma para que se pueda clickear */
+} 
 
 /* Un contenedor nuevo solo para centrar el logo */
 .dropdown-logo-container {

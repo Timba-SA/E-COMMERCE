@@ -30,6 +30,17 @@ export const deleteProductAPI = async (id) => {
   }
 };
 
+// --- NUEVA FUNCIÓN ---
+export const getCategoriesAPI = async () => {
+  try {
+    const response = await axiosClient.get('/categories/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+};
+
 // --- Funciones Añadidas ---
 
 export const createProductAPI = async (formData) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductById, createProductAPI, updateProductAPI } from '../api/productsApi'; // 1. Importar todas las funciones necesarias
+import { getProductById, createProductAPI, updateProductAPI, getCategoriesAPI } from '../api/productsApi';
 import { NotificationContext } from '../context/NotificationContext';
 import Spinner from '../components/common/Spinner';
 
@@ -14,49 +14,55 @@ const AdminProductFormPage = () => {
         descripcion: '',
         precio: 0,
         sku: '',
-        stock: 0, // Este stock es para variantes si no se especifican
-        categoria_id: 1,
+        stock: 0,
+        categoria_id: '', // Inicializar vacío para forzar selección
         material: '',
         talle: '',
         color: '',
     });
+    
+    const [categories, setCategories] = useState([]);
     const [imageFiles, setImageFiles] = useState([]);
     const [existingImages, setExistingImages] = useState([]);
     const [loading, setLoading] = useState(false);
     const isEditing = Boolean(productId);
 
     useEffect(() => {
-        if (isEditing) {
+        const fetchInitialData = async () => {
             setLoading(true);
-            const fetchProduct = async () => {
-                try {
-                    // 2. Usar la función de API para obtener el producto
-                    const data = await getProductById(productId);
+            try {
+                const categoriesData = await getCategoriesAPI();
+                setCategories(categoriesData);
+
+                if (isEditing) {
+                    const productToEdit = await getProductById(productId);
                     setProductData({
-                        nombre: data.nombre || '',
-                        descripcion: data.descripcion || '',
-                        precio: data.precio || 0,
-                        sku: data.sku || '',
-                        stock: data.stock || 0,
-                        categoria_id: data.categoria_id || 1,
-                        material: data.material || '',
-                        talle: data.talle || '',
-                        color: data.color || '',
+                        nombre: productToEdit.nombre || '',
+                        descripcion: productToEdit.descripcion || '',
+                        precio: productToEdit.precio || 0,
+                        sku: productToEdit.sku || '',
+                        stock: productToEdit.stock || 0,
+                        categoria_id: productToEdit.categoria_id || '',
+                        material: productToEdit.material || '',
+                        talle: productToEdit.talle || '',
+                        color: productToEdit.color || '',
                     });
-                    setExistingImages(data.urls_imagenes || []);
-                } catch (err) {
-                    notify(err.message, 'error');
-                } finally {
-                    setLoading(false);
+                    setExistingImages(productToEdit.urls_imagenes || []);
                 }
-            };
-            fetchProduct();
-        }
+            } catch (err) {
+                notify(err.message || 'Error loading data', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInitialData();
     }, [productId, isEditing, notify]);
 
     const handleChange = (e) => {
         const { name, value, type } = e.target;
-        setProductData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
+        const parsedValue = name === 'categoria_id' ? parseInt(value, 10) :
+                            type === 'number' ? parseFloat(value) || 0 : value;
+        setProductData(prev => ({ ...prev, [name]: parsedValue }));
     };
 
     const handleFileChange = (e) => {
@@ -74,11 +80,8 @@ const AdminProductFormPage = () => {
 
         try {
             if (isEditing) {
-                // 3. Al editar, enviar JSON con updateProductAPI
-                // Nota: Esta implementación no maneja la actualización de imágenes.
                 await updateProductAPI(productId, productData);
             } else {
-                // 4. Al crear, enviar FormData con createProductAPI
                 const formData = new FormData();
                 for (const key in productData) {
                     formData.append(key, productData[key]);
@@ -97,14 +100,14 @@ const AdminProductFormPage = () => {
         }
     };
 
-    if (isEditing && loading) return <Spinner message="Cargando producto..." />;
+    if (loading && !categories.length) return <Spinner message="Cargando datos..." />;
 
     return (
         <div>
           <h1>{isEditing ? 'Editar Producto' : 'Añadir Nuevo Producto'}</h1>
           <form onSubmit={handleSubmit} className="admin-form">
             <div className="form-grid">
-              {Object.keys(productData).map(key => (
+              {Object.keys(productData).filter(key => key !== 'categoria_id').map(key => (
                 <div className="form-group" key={key}>
                   <label htmlFor={key}>{key.replace(/_/g, ' ').toUpperCase()}</label>
                   <input
@@ -117,6 +120,32 @@ const AdminProductFormPage = () => {
                   />
                 </div>
               ))}
+              
+              <div className="form-group">
+                <label htmlFor="categoria_id">CATEGORÍA</label>
+                <select
+                  id="categoria_id"
+                  name="categoria_id"
+                  value={productData.categoria_id}
+                  onChange={handleChange}
+                  required
+                  style={{
+                      width: '100%',
+                      padding: '0.5rem 0',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: '1px solid #000',
+                      fontSize: '1rem',
+                  }}
+                >
+                  <option value="" disabled>-- Seleccione una categoría --</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
     
             <div className="form-group" style={{gridColumn: '1 / -1', marginTop: '1rem'}}>

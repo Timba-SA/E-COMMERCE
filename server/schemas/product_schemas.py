@@ -49,4 +49,12 @@ class Product(ProductBase):
     id: int
     variantes: List[VarianteProducto] = [] #CAMBIO NUEVO!!!
     class Config:
-        from_attributes = True # Permite que Pydantic lea los datos desde un objeto de SQLAlchemy
+        from_attributes = True # Permite que Pydantic lea los datos desde un objeto de SQLAlchemy
+
+# --- NUEVO: Schema para las Categorías ---
+class Categoria(BaseModel):
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
