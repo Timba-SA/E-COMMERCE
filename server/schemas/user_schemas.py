@@ -42,3 +42,11 @@ class Token(BaseModel):
 
 class UserUpdateRole(BaseModel):
     role: str
+
+# --- ¡AGREGADO PARA FORGOT PASSWORD! ---
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

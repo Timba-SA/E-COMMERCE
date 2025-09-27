@@ -2,6 +2,7 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { NotificationContext } from '../context/NotificationContext';
+import { forgotPasswordAPI } from '../api/authApi';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -12,43 +13,46 @@ const ForgotPasswordPage = () => {
     e.preventDefault();
     setLoading(true);
     
-    console.log(`Solicitud de reseteo para: ${email}`);
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setLoading(false);
-    notify('Si el email está registrado, recibirás un link para resetear tu contraseña.', 'success');
-    setEmail('');
+    try {
+      // The backend will always return a generic success message for security
+      const data = await forgotPasswordAPI(email);
+      notify(data.message, 'success');
+      setEmail('');
+    } catch (err) {
+      // Even if the API fails, we show the generic message
+      notify('If your email is in our database, you will receive a link to reset your password.', 'success');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-form-container">
-        <h1>Recuperar Contraseña</h1>
-        <p style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#555' }}>
-          Ingresá tu email y te enviaremos un link para que puedas crear una nueva.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Enviando...' : 'Enviar Link'}
-          </button>
-        </form>
-        <p className="auth-switch">
-          ¿Te acordaste? <Link to="/login">Volver a Iniciar Sesión</Link>
-        </p>
+    <main className="login-page-container" style={{ maxWidth: '500px', margin: '0 auto' }}>
+      <h1 className="form-title">RECOVER PASSWORD</h1>
+      <p style={{ textAlign: 'center', marginBottom: '2.5rem', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        Enter your e-mail and we will send you a link to create a new one.
+      </p>
+      <form onSubmit={handleSubmit} className="login-form">
+        <div className="input-group">
+          <label htmlFor="email">E-MAIL</label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </div>
+        <button type="submit" className="form-button" disabled={loading} style={{ marginTop: '1.5rem' }}>
+          {loading ? 'SENDING...' : 'SEND LINK'}
+        </button>
+      </form>
+      <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #e0e0e0', width: '100%' }}>
+        <p className="signup-text">ALREADY REMEMBERED?</p>
+        <Link to="/login" className="form-button outline">BACK TO LOG IN</Link>
       </div>
-    </div>
+    </main>
   );
 };
 

@@ -13,8 +13,6 @@ router = APIRouter(prefix="/api/chatbot", tags=["Chatbot"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Constante para limitar la cantidad de turnos de conversación que enviamos a la IA.
-# 5 turnos = 10 mensajes (5 del usuario, 5 de la IA). Evita prompts gigantes.
 CONTEXT_TURNS_LIMIT = 5
 
 
@@ -35,11 +33,6 @@ async def _handle_chat_exception(
 
 @router.post("/query", response_model=chatbot_schemas.ChatResponse)
 async def handle_chat_query(query: chatbot_schemas.ChatQuery, db: AsyncSession = Depends(get_db)):
-    """
-    Endpoint robusto para consultas al chatbot.
-    Maneja el historial y el contexto de forma inteligente.
-    """
-    # 1. Guardamos la nueva pregunta del usuario en la DB
     nueva_conversacion = ConversacionIA(
         sesion_id=query.sesion_id,
         prompt=query.pregunta,
@@ -50,29 +43,24 @@ async def handle_chat_query(query: chatbot_schemas.ChatQuery, db: AsyncSession =
     await db.refresh(nueva_conversacion)
 
     try:
-        # 2. Obtenemos el historial completo de la sesión
         result = await db.execute(
             select(ConversacionIA)
             .filter(ConversacionIA.sesion_id == query.sesion_id)
             .order_by(ConversacionIA.creado_en)
         )
         full_db_history = result.scalars().all()
-
-        # 3. Limitamos el historial a los últimos turnos para eficiencia
         limited_history = full_db_history[-(CONTEXT_TURNS_LIMIT * 2):]
 
-        # 4. Preparamos el contexto y las instrucciones por separado
         catalog_context = await ia_service.get_catalog_from_db(db)
-        system_prompt = ia_service.get_chatbot_system_prompt() # Solo la personalidad
+        system_prompt = ia_service.get_chatbot_system_prompt()
 
-        # 5. Llamamos al servicio de IA con los componentes bien definidos
+        # ¡ACÁ ESTÁ LA CLAVE! Llamamos a la función correcta
         respuesta_ia = await ia_service.get_ia_response(
             system_prompt=system_prompt,
             catalog_context=catalog_context,
             chat_history=limited_history
         )
 
-        # 6. Actualizamos la conversación en la DB con la respuesta final
         nueva_conversacion.respuesta = respuesta_ia
         db.add(nueva_conversacion)
         await db.commit()

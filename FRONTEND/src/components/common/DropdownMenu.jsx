@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-// 1. Se quita el valor por defecto de la prop
 const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
   const [activeCategory, setActiveCategory] = useState('menswear');
 
@@ -9,24 +8,24 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
     onClose();
   };
 
-  // 2. Se crea una variable segura, proveyendo un valor por defecto si logoPosition es null o undefined
+  // Para evitar errores si al principio las coordenadas no existen
   const effectiveLogoPosition = logoPosition || { top: 0, left: 0, width: 0, height: 0 };
 
+  // Los estilos en línea que hacen la magia de alineación
   const logoStyle = {
     position: 'fixed',
-    // 3. Se usa la variable segura, evitando el error
     top: `${effectiveLogoPosition.top}px`,
     left: `${effectiveLogoPosition.left}px`,
     width: `${effectiveLogoPosition.width}px`,
     height: `${effectiveLogoPosition.height}px`,
-    color: '#000',
+    color: '#000', // Color negro sobre fondo blanco
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2003,
-    opacity: isOpen ? 1 : 0,
+    opacity: isOpen ? 1 : 0, // Aparece y desaparece con el menú
     transition: 'opacity 0.2s ease-in-out',
-    pointerEvents: 'none',
+    pointerEvents: 'none', // Para que no interfiera con los clics
   };
 
   return (
@@ -49,6 +48,7 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
           </button>
         </div>
         
+        {/* El logo "fantasma" que se alinea perfectamente */}
         <div className="logo" style={logoStyle}>VOID</div>
 
         <div className="dropdown-content">

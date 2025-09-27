@@ -1,18 +1,16 @@
 # En backend/routers/products_router.py
 
-# --- IMPORTS ACTUALIZADOS ---
 from fastapi import (
     APIRouter, Depends, HTTPException, Query, status, 
     File, UploadFile, Form
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import joinedload
 from typing import List, Optional
 
-# --- Tus Módulos y Servicios ---
-from database.models import VarianteProducto, Producto
-from services import auth_services, cloudinary_service # <-- ¡Importamos el nuevo servicio!
+from database.models import VarianteProducto, Producto, Categoria
+from services import auth_services, cloudinary_service
 from schemas import product_schemas, user_schemas
 from database.database import get_db
 
@@ -22,24 +20,55 @@ router = APIRouter(
     tags=["Products"]
 )
 
-# --- GET (Estos ya estaban bien, no se tocan) ---
 @router.get("/", response_model=List[product_schemas.Product])
-async def get_products(db: AsyncSession = Depends(get_db), material: Optional[str] = Query(None), precio_max: Optional[float] = Query(None, alias="precio"), categoria_id: Optional[int] = Query(None), talle: Optional[str] = Query(None), color: Optional[str] = Query(None), skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100), sort_by: Optional[str] = Query(None)):
+async def get_products(
+    db: AsyncSession = Depends(get_db), 
+    q: Optional[str] = Query(None, description="Término de búsqueda general para nombre y descripción"),
+    material: Optional[str] = Query(None), 
+    precio_min: Optional[float] = Query(None),
+    precio_max: Optional[float] = Query(None),
+    categoria_id: Optional[int] = Query(None), 
+    talle: Optional[str] = Query(None), 
+    color: Optional[str] = Query(None), 
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(10, ge=1, le=100), 
+    sort_by: Optional[str] = Query(None)
+):
     query = select(Producto).options(joinedload(Producto.variantes))
+
+    # --- ¡ACÁ ESTÁ EL ARREGLO! AHORA SOLO BUSCA EN EL NOMBRE ---
+    if q:
+        search_term = f"%{q}%"
+        query = query.filter(Producto.nombre.ilike(search_term))
+    # --- FIN DEL ARREGLO ---
+    
     if material: query = query.where(Producto.material.ilike(f"%{material}%"))
-    if precio_max: query = query.where(Producto.precio <= precio_max)
+    if precio_min is not None: query = query.where(Producto.precio >= precio_min)
+    if precio_max is not None: query = query.where(Producto.precio <= precio_max)
     if categoria_id: query = query.where(Producto.categoria_id == categoria_id)
-    if talle: query = query.where(Producto.talle.ilike(f"%{talle}%"))
-    if color: query = query.where(Producto.color.ilike(f"%{color}%"))
+    
+    if talle: 
+        talles = [t.strip() for t in talle.split(',')]
+        query = query.join(Producto.variantes).filter(VarianteProducto.tamanio.in_(talles))
+
+    if color:
+        colors = [c.strip() for c in color.split(',')]
+        if not talle:
+             query = query.join(Producto.variantes)
+        query = query.filter(VarianteProducto.color.in_(colors))
+
     if sort_by:
         if sort_by == "precio_asc": query = query.order_by(Producto.precio.asc())
         elif sort_by == "precio_desc": query = query.order_by(Producto.precio.desc())
         elif sort_by == "nombre_asc": query = query.order_by(Producto.nombre.asc())
         elif sort_by == "nombre_desc": query = query.order_by(Producto.nombre.desc())
+        
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     products = result.scalars().unique().all()
     return products
+
+# ... (el resto de tus endpoints de productos quedan exactamente igual) ...
 
 @router.get("/{product_id}", response_model=product_schemas.Product)
 async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
@@ -50,7 +79,6 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return product
 
-# --- POST DE VARIANTES (Este que agregaste lo dejamos como está) ---
 @router.post(
     "/{product_id}/variants", 
     response_model=product_schemas.VarianteProducto, 
@@ -59,7 +87,7 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
 )
 async def create_variant_for_product(
     product_id: int,
-    variant_in: product_schemas.VarianteProducto, # OJO: El schema de variante necesita un `producto_id` opcional o sacarlo de acá
+    variant_in: product_schemas.VarianteProducto,
     db: AsyncSession = Depends(get_db),
     current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)
 ):
@@ -67,7 +95,6 @@ async def create_variant_for_product(
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
 
-    # Creamos un diccionario a partir del schema de entrada y le agregamos el ID del producto
     variant_data = variant_in.model_dump()
     variant_data['producto_id'] = product_id
 
@@ -77,10 +104,8 @@ async def create_variant_for_product(
     await db.refresh(new_variant)
     return new_variant
 
-# --- POST PARA CREAR PRODUCTO (ACÁ ESTÁ LA MAGIA NUEVA) ---
 @router.post("/", response_model=product_schemas.Product, status_code=status.HTTP_201_CREATED, summary="Crear un nuevo producto con imágenes (Solo Admins)")
 async def create_product(
-    # Recibimos los datos del producto como campos de formulario
     nombre: str = Form(...),
     descripcion: Optional[str] = Form(None),
     precio: float = Form(...),
@@ -90,64 +115,45 @@ async def create_product(
     material: Optional[str] = Form(None),
     talle: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
-    # Y acá recibimos la lista de archivos de imagen
     images: List[UploadFile] = File(..., description="Hasta 3 imágenes del producto"),
     db: AsyncSession = Depends(get_db),
     current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)
 ):
-    # 1. Verificación del SKU (esto queda igual)
     existing_product_sku = await db.execute(select(Producto).filter(Producto.sku == sku))
     if existing_product_sku.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ya existe un producto con el SKU: {sku}")
 
-    # 2. Verificación de la cantidad de imágenes
     if len(images) > 3:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se pueden subir como máximo 3 imágenes.")
 
-    # 3. Subida de imágenes a Cloudinary
     image_urls = []
-    if images and images[0].filename: # Chequeamos que no venga una lista vacía o con archivos sin nombre
+    if images and images[0].filename:
         image_urls = await cloudinary_service.upload_images(images)
 
-    # 4. Armado del objeto del producto con los datos del formulario y las URLs
     product_data = product_schemas.ProductCreate(
-        nombre=nombre,
-        descripcion=descripcion,
-        precio=precio,
-        sku=sku,
-        stock=stock,
-        categoria_id=categoria_id,
-        material=material,
-        talle=talle,
-        color=color,
-        urls_imagenes=image_urls  # Le pasamos la lista de URLs que nos devolvió Cloudinary
+        nombre=nombre, descripcion=descripcion, precio=precio, sku=sku,
+        stock=stock, categoria_id=categoria_id, material=material,
+        talle=talle, color=color, urls_imagenes=image_urls
     )
 
-    # 5. Guardado en la base de datos
     new_product = Producto(**product_data.model_dump())
     db.add(new_product)
     await db.commit()
     await db.refresh(new_product)
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    # 6. Si se proveyó talle y stock, crear una variante por defecto
     if talle and stock > 0:
         default_variant = VarianteProducto(
-            producto_id=new_product.id,
-            tamanio=talle, # Usamos el talle del formulario
-            color=color or "default", # Usamos el color del formulario o un valor por defecto
-            cantidad_en_stock=stock # Usamos el stock del formulario
+            producto_id=new_product.id, tamanio=talle,
+            color=color or "default", cantidad_en_stock=stock
         )
         db.add(default_variant)
         await db.commit()
 
-    # 7. Devolvemos el producto completo, con sus variantes (incluida la nueva)
     query = select(Producto).options(joinedload(Producto.variantes)).filter(Producto.id == new_product.id)
     result = await db.execute(query)
     created_product = result.scalars().unique().first()
     return created_product
 
-# --- PUT (CORREGIDO, sin cambios funcionales pero consistente) ---
 @router.put("/{product_id}", response_model=product_schemas.Product, summary="Actualizar un producto (Solo Admins)")
 async def update_product(product_id: int, product_in: product_schemas.ProductUpdate, db: AsyncSession = Depends(get_db), current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)):
     product_db = await db.get(Producto, product_id)
@@ -166,10 +172,8 @@ async def update_product(product_id: int, product_in: product_schemas.ProductUpd
     updated_product = result.scalars().unique().first()
     return updated_product
 
-# --- DELETE (CORREGIDO, sin cambios funcionales pero consistente) ---
 @router.delete("/{product_id}", status_code=status.HTTP_200_OK, summary="Eliminar un producto y sus variantes (Solo Admins)")
 async def delete_product(product_id: int, db: AsyncSession = Depends(get_db), current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)):
-    # 1. Obtenemos el producto y cargamos sus variantes explícitamente
     result = await db.execute(
         select(Producto).options(joinedload(Producto.variantes)).where(Producto.id == product_id)
     )
@@ -178,14 +182,10 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_db), cu
     if not product_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
 
-    # 2. Iteramos y eliminamos cada una de las variantes asociadas
     for variant in product_db.variantes:
         await db.delete(variant)
     
-    # 3. Una vez eliminadas las variantes, eliminamos el producto principal
     await db.delete(product_db)
-    
-    # 4. Guardamos todos los cambios en la base de datos
     await db.commit()
     
     return {"message": "Producto y sus variantes eliminados exitosamente"}

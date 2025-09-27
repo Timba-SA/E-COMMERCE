@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProducts } from '../api/productsApi'; // 1. Importar la API de productos
+import { getProducts } from '../api/productsApi';
 import FilterPanel from '@/components/common/FilterPanel.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
 
-// --- Componentes Internos ---
 const ProductCard = ({ product }) => {
     const imageUrl = product.urls_imagenes?.[0] || '/img/placeholder.jpg';
-    const formatPrice = (price) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price).replace("ARS", "$").trim();
+    const formatPrice = (price) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price).replace("ARS", "$").trim();
 
     return (
         <div className="catalog-product-card">
@@ -34,7 +33,6 @@ const ProductCardSkeleton = () => (
     </div>
 );
 
-// --- Página Principal del Catálogo ---
 const CatalogPage = () => {
     const { categoryName } = useParams();
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -42,11 +40,12 @@ const CatalogPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // 2. Estado centralizado para filtros y paginación
     const [filters, setFilters] = useState({
         talle: [],
+        precio_min: 0,
         precio_max: 200000,
         sort_by: 'nombre_asc',
+        color: [], // <-- ¡IMPORTANTE! Lo inicializamos como una lista vacía.
         skip: 0,
         limit: 12,
     });
@@ -57,19 +56,24 @@ const CatalogPage = () => {
         try {
             const params = { ...filters };
             if (categoryName) params.categoria = categoryName;
-            if (params.talle.length === 0) delete params.talle; // No enviar talle si está vacío
-            else params.talle = params.talle.join(','); // Convertir array a string separado por comas
+
+            // Preparamos los filtros de array para la API
+            if (params.talle.length > 0) params.talle = params.talle.join(',');
+            else delete params.talle;
+            
+            // --- ¡ACÁ ESTÁ EL ARREGLO! ---
+            if (params.color.length > 0) params.color = params.color.join(',');
+            else delete params.color;
 
             const data = await getProducts(params);
             setProducts(Array.isArray(data) ? data : []);
         } catch (err) {
-            setError(err.message || 'No se pudieron cargar los productos');
+            setError(err.message || 'Could not load products');
         } finally {
             setIsLoading(false);
         }
     }, [categoryName, filters]);
 
-    // 3. useEffect que reacciona a los cambios en los filtros
     useEffect(() => {
         fetchProducts();
         window.scrollTo(0, 0);
@@ -80,28 +84,18 @@ const CatalogPage = () => {
     }, [isFilterPanelOpen]);
 
     const handleFilterChange = (newFilters) => {
-        setFilters(prev => ({ ...prev, ...newFilters, skip: 0 })); // Resetea la paginación al cambiar filtros
+        setFilters(prev => ({ ...prev, ...newFilters, skip: 0 }));
     };
     
-    const handleSortChange = (e) => {
-        setFilters(prev => ({ ...prev, sort_by: e.target.value, skip: 0 }));
-    };
-
     const toggleFilterPanel = () => setIsFilterPanelOpen(!isFilterPanelOpen);
 
     return (
         <>
             <main className="catalog-container">
                 <div className="catalog-header">
-                    <h1 className="catalog-title">{categoryName?.replace('-', ' ') || 'CATÁLOGO'}</h1>
+                    <h1 className="catalog-title">{categoryName?.replace('-', ' ') || 'CATALOG'}</h1>
                     <div className="catalog-controls">
-                        <select onChange={handleSortChange} value={filters.sort_by} className="sort-dropdown">
-                            <option value="nombre_asc">Ordenar por: Nombre (A-Z)</option>
-                            <option value="nombre_desc">Ordenar por: Nombre (Z-A)</option>
-                            <option value="precio_asc">Ordenar por: Precio (Menor a Mayor)</option>
-                            <option value="precio_desc">Ordenar por: Precio (Mayor a Menor)</option>
-                        </select>
-                        <button onClick={toggleFilterPanel} className="filters-link">FILTROS &gt;</button>
+                        <button onClick={toggleFilterPanel} className="filters-link">FILTERS &gt;</button>
                     </div>
                 </div>
 
@@ -116,14 +110,11 @@ const CatalogPage = () => {
                       {products.map(product => <ProductCard product={product} key={product.id} />)}
                   </div>
                 ) : (
-                    <p className="loading-text">No se encontraron productos con estos filtros.</p>
+                    <p className="loading-text">No products found with these filters.</p>
                 )}
-
-                {/* Aquí iría la paginación */}
             </main>
             
             <div className={`filter-panel-overlay ${isFilterPanelOpen ? 'open' : ''}`} onClick={toggleFilterPanel} />
-            {/* 4. Pasar estado y manejadores al panel de filtros */}
             <FilterPanel 
                 isOpen={isFilterPanelOpen} 
                 onClose={toggleFilterPanel} 

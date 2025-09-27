@@ -1,69 +1,117 @@
-import React, { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/useAuthStore'; // 1. Importar el store de Zustand
-import { getMyOrdersAPI } from '../api/ordersApi'; // 2. Importar la nueva API de órdenes
+// En FRONTEND/src/pages/AccountPage.jsx
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useAuthStore } from '../stores/useAuthStore';
+import { getMyOrdersAPI } from '../api/ordersApi';
 import Spinner from '../components/common/Spinner';
+import { useNavigate } from 'react-router-dom';
+
+// Importamos los nuevos componentes que creamos
+const ProfileManagement = lazy(() => import('../components/account/ProfileManagement'));
+const AddressManagement = lazy(() => import('../components/account/AddressManagement'));
 
 const AccountPage = () => {
-  // 3. Usar el store para obtener la información del usuario y el logout
   const { user, logout } = useAuthStore();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('orders'); // Estado para controlar la vista
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      // El token ya no es necesario aquí, la API se encarga
-      try {
-        // 4. Llamar a la función de API correcta
-        const data = await getMyOrdersAPI();
-        setOrders(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []); // El efecto se ejecuta solo una vez
+    if (activeView === 'orders') {
+      setLoading(true);
+      const fetchOrders = async () => {
+        try {
+          const data = await getMyOrdersAPI();
+          setOrders(data);
+        } catch (error) {
+          console.error("Failed to fetch orders:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchOrders();
+    }
+  }, [activeView]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+  
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'ARS',
+        minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(price).replace("ARS", "$").trim();
+  };
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'profile':
+        return <ProfileManagement />;
+      case 'addresses':
+        return <AddressManagement />;
+      case 'orders':
+      default:
+        return loading ? <Spinner message="Loading history..." /> : (
+          orders.length > 0 ? (
+            <table className="account-table">
+              <thead>
+                <tr>
+                  <th>ORDER ID</th>
+                  <th>DATE</th>
+                  <th>TOTAL</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(order => (
+                  <tr key={order.id}>
+                    <td>#{order.id}</td>
+                    <td>{new Date(order.creado_en).toLocaleDateString('en-CA')}</td>
+                    <td>{formatPrice(order.monto_total)}</td>
+                    <td>
+                      <span className={`status-badge status-${order.estado_pago?.toLowerCase()}`}>
+                        {order.estado_pago || 'N/A'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p className="no-orders-message">You haven't placed any orders yet.</p>
+        );
+    }
+  };
 
   return (
-    <div className="account-page-container">
-      <h1>Mi Cuenta</h1>
-      <div className="account-content">
-        <aside className="account-sidebar">
-          <h3>Hola, {user?.name}</h3>
-          <p>{user?.email}</p>
-          {/* La función de logout viene directamente del store */}
-          <button onClick={logout} className="logout-button">Cerrar Sesión</button>
-        </aside>
-        <main className="account-main">
-          <h2>Mi Historial de Compras</h2>
-          {loading ? <Spinner message="Cargando historial..." /> : (
-            orders.length > 0 ? (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID Orden</th>
-                    <th>Fecha</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map(order => (
-                    <tr key={order.id}>
-                      <td>#{order.id}</td>
-                      <td>{new Date(order.creado_en).toLocaleDateString()}</td>
-                      <td>${order.monto_total}</td>
-                      <td>{order.estado_pago}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p>Todavía no hiciste ninguna compra. ¿Qué estás esperando?</p>
-          )}
-        </main>
+    <main className="account-page-container">
+      <div className="account-header">
+        <h1>MY ACCOUNT</h1>
       </div>
-    </div>
+      <div className="account-content-grid">
+        <aside className="account-sidebar">
+          <div className="user-info">
+            <h3 className="user-name">{user?.name} {user?.last_name}</h3>
+            <p className="user-email">{user?.email}</p>
+          </div>
+          <nav className="account-nav">
+            <a onClick={() => setActiveView('orders')} className={`account-nav-link ${activeView === 'orders' ? 'active' : ''}`}>Order History</a>
+            <a onClick={() => setActiveView('profile')} className={`account-nav-link ${activeView === 'profile' ? 'active' : ''}`}>Profile</a>
+            <a onClick={() => setActiveView('addresses')} className={`account-nav-link ${activeView === 'addresses' ? 'active' : ''}`}>Addresses</a>
+          </nav>
+          <button onClick={handleLogout} className="account-logout-btn">
+            LOG OUT
+          </button>
+        </aside>
+
+        <section className="account-main-content">
+          <Suspense fallback={<Spinner />}>
+            {renderContent()}
+          </Suspense>
+        </section>
+      </div>
+    </main>
   );
 };
 

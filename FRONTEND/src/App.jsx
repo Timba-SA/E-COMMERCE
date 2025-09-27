@@ -18,7 +18,6 @@ import Spinner from '@/components/common/Spinner.jsx';
 
 // --- Páginas (Carga Diferida) ---
 const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
-// ... (el resto de las importaciones lazy se mantienen igual)
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
 const ProductPage = lazy(() => import('@/pages/ProductPage.jsx'));
@@ -40,23 +39,37 @@ const AccountPage = lazy(() => import('@/pages/AccountPage.jsx'));
 const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
 const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage.jsx'));
+
 
 const AppContent = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // --- ¡VUELVE LA LÓGICA DEL LOGO! ---
   const logoRef = useRef(null);
+  const [logoPosition, setLogoPosition] = useState(null);
+  
   const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  // 1. Restaurar el estado para la posición del logo
-  const [logoPosition, setLogoPosition] = useState(null);
-
   const { isAuthLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // --- EFECTO PARA MEDIR LA POSICIÓN DEL LOGO ---
+  useEffect(() => {
+    const updatePosition = () => {
+      if (logoRef.current) {
+        setLogoPosition(logoRef.current.getBoundingClientRect());
+      }
+    };
+    requestAnimationFrame(updatePosition);
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const handleSetAddedItem = (item) => setAddedItem(item);
@@ -71,19 +84,6 @@ const AppContent = () => {
       guestId = uuidv4();
       localStorage.setItem('guestSessionId', guestId);
     }
-  }, []);
-
-  // 2. Restaurar el efecto que calcula la posición del logo
-  useEffect(() => {
-    const updatePosition = () => {
-      if (logoRef.current) {
-        setLogoPosition(logoRef.current.getBoundingClientRect());
-      }
-    };
-    // Da un pequeño respiro al navegador para asegurar que todo esté renderizado
-    requestAnimationFrame(updatePosition);
-    window.addEventListener('resize', updatePosition);
-    return () => window.removeEventListener('resize', updatePosition);
   }, []);
 
   useEffect(() => {
@@ -107,11 +107,10 @@ const AppContent = () => {
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
         onOpenSearch={handleOpenSearch}
-        ref={logoRef}
+        ref={logoRef} // Le pasamos la "etiqueta" al Navbar para poder medirlo
       />
       <Suspense fallback={<Spinner message="Cargando página..." />}>
         <Routes>
-            {/* ... (todas las rutas se mantienen igual) ... */}
             <Route path="/" element={<HomePage />} />
             <Route path="/shop" element={<CatalogPage />} />
             <Route path="/catalog/:categoryName" element={<CatalogPage />} />
@@ -131,6 +130,7 @@ const AppContent = () => {
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failure" element={<PaymentFailurePage />} />
             <Route path="/payment/pending" element={<PaymentPendingPage />} />
@@ -147,8 +147,14 @@ const AppContent = () => {
         </Routes>
       </Suspense>
       <Footer />
-      {/* 3. Pasar la prop que faltaba */}
-      <DropdownMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} logoPosition={logoPosition} />
+      
+      {/* ¡LE PASAMOS LA POSICIÓN AL MENÚ! */}
+      <DropdownMenu 
+        isOpen={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)} 
+        logoPosition={logoPosition} 
+      />
+      
       {isCartNotificationOpen && <CartNotificationModal item={addedItem} onClose={handleCloseCartNotification} />}
       <SearchModal isOpen={isSearchOpen} onClose={handleCloseSearch} />
       <Chatbot />

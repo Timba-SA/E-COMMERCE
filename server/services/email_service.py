@@ -1,3 +1,5 @@
+# En backend/services/email_service.py
+
 import os
 import asyncio
 import aiosmtplib
@@ -17,6 +19,7 @@ EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # <-- NUEVO
 
 # --- Verificación de configuración ---
 if not all([EMAIL_SENDER, EMAIL_PASSWORD]):
@@ -99,15 +102,58 @@ async def send_plain_email(receiver_email: str, subject: str, body: str):
         logger.error(f"Error al enviar email a {receiver_email}: {e}", exc_info=True)
 
 
-# Para probar el envío (ejecutar directamente este archivo)
-if __name__ == "__main__":
+async def send_password_reset_email(receiver_email: str, token: str):
+    """
+    Construye y envía un email para resetear la contraseña.
+    """
     if not all([EMAIL_SENDER, EMAIL_PASSWORD]):
-        print("Para probar, necesitás configurar EMAIL_SENDER y EMAIL_APP_PASSWORD en tu archivo .env")
-    else:
-        mock_payment_info = {
-            "payer": {"email": "test@example.com"},
-            "transaction_amount": 99.99
-        }
-        print("Enviando email de prueba...")
-        asyncio.run(send_order_confirmation_email(mock_payment_info))
-        print("Prueba finalizada.")
+        logger.error("El servicio de email no está configurado para enviar el reseteo de contraseña.")
+        return
+
+    reset_link = f"{FRONTEND_URL}/reset-password/{token}"
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Recuperación de Contraseña - VOID"
+    message["From"] = EMAIL_SENDER
+    message["To"] = receiver_email
+
+    text = f"""
+    Hola,
+    Recibimos una solicitud para resetear tu contraseña en VOID.
+    Hacé click en el siguiente link para continuar: {reset_link}
+    Si no fuiste vos, podés ignorar este email.
+    """
+
+    html = f"""
+    <html>
+      <body style="font-family: sans-serif; padding: 20px;">
+        <h2 style="color: #333;">Recuperación de Contraseña</h2>
+        <p>Hola,</p>
+        <p>Recibimos una solicitud para cambiar tu contraseña en VOID. Hacé click en el botón de abajo para crear una nueva.</p>
+        <a href="{reset_link}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; font-weight: bold; margin: 20px 0;">
+          CREAR NUEVA CONTRASEÑA
+        </a>
+        <p style="font-size: 0.9em; color: #777;">Si no solicitaste esto, simplemente ignorá este mensaje.</p>
+        <p style="font-weight: bold; margin-top: 20px;">VOID</p>
+      </body>
+    </html>
+    """
+    
+    part1 = MIMEText(text, "plain")
+    part2 = MIMEText(html, "html")
+    message.attach(part1)
+    message.attach(part2)
+
+    try:
+        await aiosmtplib.send(
+            message,
+            hostname=SMTP_SERVER,
+            port=SMTP_PORT,
+            start_tls=True,
+            username=EMAIL_SENDER,
+            password=EMAIL_PASSWORD,
+        )
+        logger.info(f"Email de reseteo de contraseña enviado a {receiver_email}")
+    except Exception as e:
+        logger.error(f"Error al enviar email de reseteo a {receiver_email}: {e}", exc_info=True)
+        raise

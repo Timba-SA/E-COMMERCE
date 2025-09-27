@@ -3,12 +3,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pymongo.database import Database
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+import secrets
 
 from schemas import user_schemas
 from utils import security
 from database.database import get_db_nosql
 from services import auth_services as auth_service
+from services import email_service
 
 router = APIRouter(
     prefix="/api/auth",
@@ -59,12 +61,68 @@ async def login_for_access_token(db: Database = Depends(get_db_nosql), form_data
     
     return {"access_token": access_token, "token_type": "bearer"}
 
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request: user_schemas.ForgotPasswordRequest,
+    db: Database = Depends(get_db_nosql)
+):
+    user = await db.users.find_one({"email": request.email})
+    if user:
+        reset_token = secrets.token_urlsafe(32)
+        hashed_token = security.get_password_hash(reset_token)
+        expire_date = datetime.now(timezone.utc) + timedelta(hours=1)
+        
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "reset_password_token": hashed_token,
+                "reset_password_token_expires": expire_date
+            }}
+        )
+        
+        try:
+            await email_service.send_password_reset_email(user["email"], reset_token)
+        except Exception as e:
+            print(f"Error al enviar email: {e}")
+            pass
+
+    return {"message": "Si tu email está en nuestra base de datos, recibirás un link para resetear tu contraseña."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    request: user_schemas.ResetPasswordRequest,
+    db: Database = Depends(get_db_nosql)
+):
+    users_cursor = db.users.find({"reset_password_token": {"$exists": True}})
+    
+    user_to_update = None
+    async for user in users_cursor:
+        if security.verify_password(request.token, user["reset_password_token"]):
+            user_to_update = user
+            break
+            
+    if not user_to_update:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token inválido.")
+        
+    if datetime.now(timezone.utc) > user_to_update["reset_password_token_expires"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El token ha expirado.")
+        
+    new_hashed_password = security.get_password_hash(request.new_password)
+    
+    await db.users.update_one(
+        {"_id": user_to_update["_id"]},
+        {"$set": {
+            "hashed_password": new_hashed_password
+         },
+         "$unset": {
+            "reset_password_token": "",
+            "reset_password_token_expires": ""
+         }}
+    )
+    
+    return {"message": "Contraseña actualizada con éxito."}
+
 @router.get("/me", response_model=user_schemas.UserOut, summary="Obtener datos del usuario actual")
 async def read_users_me(current_user: user_schemas.UserOut = Depends(auth_service.get_current_user)):
-    """
-    Un endpoint protegido. Solo funciona si mandás un token JWT válido.
-    Te devuelve los datos del usuario dueño del token.
-    """
     return current_user
-
-# ¡LISTO! EL ENDPOINT DE PROMOTE YA NO ESTÁ ACÁ.

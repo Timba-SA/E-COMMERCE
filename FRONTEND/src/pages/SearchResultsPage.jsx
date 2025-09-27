@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { getProducts } from '../api/productsApi'; // 1. Importar la API correcta
+import { getProducts } from '../api/productsApi';
 import Spinner from '../components/common/Spinner';
 
 const SearchResultsPage = () => {
     const [searchParams] = useSearchParams();
     const query = searchParams.get('q');
 
-    // 2. Usar useState y useEffect en lugar de react-query
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -23,11 +22,10 @@ const SearchResultsPage = () => {
             setLoading(true);
             setError(null);
             try {
-                // 3. Llamar a getProducts con el parámetro 'material'
-                const data = await getProducts({ material: query, limit: 100 });
+                const data = await getProducts({ q: query, limit: 100 });
                 setProducts(data);
             } catch (err) {
-                setError('Error al buscar productos.');
+                setError('Error searching for products.');
             }
             setLoading(false);
         };
@@ -36,25 +34,23 @@ const SearchResultsPage = () => {
     }, [query]);
 
     const formatPrice = (price) => {
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency', currency: 'ARS',
+          minimumFractionDigits: 0, maximumFractionDigits: 0,
         }).format(price).replace("ARS", "$").trim();
     };
 
     return (
         <main className="catalog-container">
             <div className="catalog-header">
-                <h1 className="catalog-title">Resultados para: "{query}"</h1>
+                <h1 className="catalog-title">Results for: "{query}"</h1>
             </div>
 
-            {loading && <Spinner message="Buscando..." />}
+            {loading && <Spinner message="Searching..." />}
             {error && <p className="loading-text">{error}</p>}
             
             {!loading && !error && products?.length === 0 && (
-                <p className="loading-text">No se encontraron productos para tu búsqueda.</p>
+                <p className="loading-text">No products were found for your search.</p>
             )}
 
             {products && products.length > 0 && (

@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { getProducts } from '../api/productsApi'; // 1. Importar la nueva API
-import ProductCard from '../components/products/ProductCard'; // 2. Importar el nuevo componente
+import { getProducts } from '../api/productsApi';
+import ProductCard from '../components/products/ProductCard';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const HomePage = () => {
-  const [products, setProducts] = useState([]); // 3. Estado simplificado
+  const [products, setProducts] = useState([]);
 
-  // Efecto para buscar productos y animar la entrada de la sección
   useEffect(() => {
     const fetchAndAnimate = async () => {
       try {
-        // Usamos la nueva función para traer 6 productos
         const fetchedProducts = await getProducts({ limit: 6 }); 
         setProducts(fetchedProducts);
       } catch (error) {
@@ -23,7 +21,6 @@ const HomePage = () => {
 
     fetchAndAnimate();
 
-    // La animación de entrada de la sección no cambia
     gsap.to(".new-arrivals", {
       opacity: 1,
       y: 0,
@@ -32,7 +29,6 @@ const HomePage = () => {
     });
   }, []);
 
-  // Efecto para animar las tarjetas de producto cuando los datos están listos
   useEffect(() => {
     if (products.length > 0) {
       gsap.fromTo(".product-card",
@@ -50,7 +46,7 @@ const HomePage = () => {
         }
       );
     }
-  }, [products]); // Se dispara cuando el estado de `products` cambia
+  }, [products]);
 
   return (
     <main>
@@ -64,14 +60,15 @@ const HomePage = () => {
       </section>
 
       <section className="new-arrivals">
-        <div className="section-title-container">
-            <h2 className="section-title">New Arrivals</h2>
-            <div className="title-line"></div>
+        {/* --- ¡ACÁ ESTÁ EL CAMBIO, CAMPEÓN! --- */}
+        <div className="title-the-new-container">
+            <h2 className="title-the-new-text">THE NEW</h2>
+            <div className="title-the-new-line"></div>
         </div>
+        {/* --- FIN DEL CAMBIO --- */}
 
         <div className="product-grid">
           {products.map(product => (
-            // 4. Usar el componente reutilizable ProductCard
             <ProductCard key={product.id} product={product} />
           ))}
         </div>

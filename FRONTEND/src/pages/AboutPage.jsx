@@ -5,23 +5,24 @@ const AboutPage = () => {
   return (
     <div className="about-page-container">
       <div className="about-hero">
-        <img src="/img/PortadaIzquierda.png" alt="Concepto de VOID" />
+        {/* Usamos la imagen que pediste como fondo */}
+        <img src="/img/PortadaIzquierda.jpg" alt="Concepto de VOID" />
         <div className="about-hero-overlay">
-          <h1>EL CONCEPTO DETRÁS DEL VACÍO</h1>
+          <h1>THE CONCEPT BEHIND THE VOID</h1>
         </div>
       </div>
       <div className="about-content">
-        <h2>Nuestra Filosofía</h2>
+        <h2>OUR PHILOSOPHY</h2>
         <p>
-          VOID no es solo una marca de indumentaria; es una declaración. Nacimos de la idea de que en la simplicidad reside la máxima sofisticación. Creemos en el poder de las siluetas puras, los materiales de alta calidad y una paleta de colores que trasciende las temporadas.
+          VOID is not just an apparel brand; it's a statement. We were born from the idea that ultimate sophistication lies in simplicity. We believe in the power of pure silhouettes, high-quality materials, and a color palette that transcends seasons.
         </p>
         <p>
-          Cada pieza está diseñada meticulosamente en nuestro atelier, pensando en la atemporalidad y la versatilidad. Creamos ropa para individuos que no siguen tendencias, sino que definen su propio estilo. El vacío no es ausencia, es un lienzo de posibilidades infinitas.
+          Each piece is meticulously designed in our atelier, with timelessness and versatility in mind. We create clothes for individuals who don't follow trends but define their own style. The void is not absence; it is a canvas of infinite possibilities.
         </p>
         <div className="about-separator"></div>
-        <h2>El Compromiso</h2>
+        <h2>OUR COMMITMENT</h2>
         <p>
-          Estamos comprometidos con la artesanía y la sostenibilidad. Colaboramos con pequeños talleres y seleccionamos cuidadosamente cada textil, asegurando no solo una estética impecable sino también una producción ética y responsable.
+          We are committed to craftsmanship and sustainability. We collaborate with small workshops and carefully select each textile, ensuring not only an impeccable aesthetic but also ethical and responsible production.
         </p>
       </div>
     </div>

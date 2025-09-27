@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { postQueryAPI } from '../../api/chatbotApi'; // 1. Importar desde la nueva ubicación
+import { postQueryAPI } from '../../api/chatbotApi';
 
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +25,7 @@ const Chatbot = () => {
 
     const toggleChat = () => {
         if (!isOpen && messages.length === 0) {
-            setMessages([{ sender: 'bot', text: '¡Hola! Soy Kara, tu asistente virtual. ¿En que te puedo ayudar?' }]);
+            setMessages([{ sender: 'bot', text: '¡Hola! Soy Kara, tu asistente virtual. ¿En qué te puedo ayudar?' }]);
         }
         setIsOpen(!isOpen);
     };
@@ -40,11 +40,15 @@ const Chatbot = () => {
         setIsLoading(true);
 
         try {
-            // 2. Usar la función de API importada correctamente
             const response = await postQueryAPI(userMessage, sessionId);
-            setMessages(prev => [...prev, { sender: 'bot', text: response.respuesta }]);
+
+            // ¡PARA DEBUGEAR! Esto te va a mostrar la respuesta en la consola del navegador.
+            console.log("Respuesta recibida del backend:", response);
+
+            const botMessage = response?.respuesta || "Disculpá, no estoy pudiendo procesar la respuesta.";
+            setMessages(prev => [...prev, { sender: 'bot', text: botMessage }]);
         } catch (error) {
-            console.error("Error al contactar al chatbot:", error);
+            console.error("Error en la llamada del chatbot:", error);
             setMessages(prev => [...prev, { sender: 'bot', text: 'Disculpá, estoy teniendo problemas para conectarme.' }]);
         } finally {
             setIsLoading(false);
@@ -53,6 +57,10 @@ const Chatbot = () => {
 
     return (
         <div className="chatbot-container">
+            <button onClick={toggleChat} className="chatbot-toggle-button" style={{ opacity: isOpen ? 0 : 1, pointerEvents: isOpen ? 'none' : 'auto' }}>
+                <img src="/CHATBOT.png" alt="Abrir Chat" className="chatbot-logo-img" />
+            </button>
+
             <div className={`chatbot-window ${isOpen ? 'open' : ''}`}>
                 <div className="chatbot-header">
                     <h3>CHAT VOID</h3>
@@ -80,7 +88,7 @@ const Chatbot = () => {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder=""
+                        placeholder="Escribí tu consulta..."
                         disabled={isLoading}
                     />
                     <button type="submit" disabled={isLoading || !inputValue.trim()} className="chatbot-send-btn">
@@ -88,10 +96,6 @@ const Chatbot = () => {
                     </button>
                 </form>
             </div>
-            
-            <button onClick={toggleChat} className="chatbot-toggle-button">
-                <img src="/CHATBOT.png" alt="Abrir Chat" className="chatbot-logo-img" />
-            </button>
         </div>
     );
 };

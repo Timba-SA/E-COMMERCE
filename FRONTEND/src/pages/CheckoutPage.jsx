@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { NotificationContext } from '../context/NotificationContext';
 import { createCheckoutPreference } from '../api/checkoutApi';
-import { getLastAddressAPI } from '../api/userApi'; // 1. Importar la nueva API de usuario
-import { useAuthStore } from '../stores/useAuthStore'; // Para saber si el usuario está logueado
+import { getLastAddressAPI } from '../api/userApi';
+import { useAuthStore } from '../stores/useAuthStore';
 import Spinner from '../components/common/Spinner';
 
 const CheckoutPage = () => {
@@ -30,20 +30,17 @@ const CheckoutPage = () => {
     const { isAuthenticated } = useAuthStore();
     const navigate = useNavigate();
 
-    // 2. useEffect para autocompletar la dirección
     useEffect(() => {
         const fetchLastAddress = async () => {
             if (isAuthenticated) {
                 try {
                     const lastAddress = await getLastAddressAPI();
                     if (lastAddress) {
-                        // Rellenamos el formulario con los datos, asegurando que todos los campos existan
                         setFormData(prev => ({ ...prev, ...lastAddress }));
-                        notify('Dirección anterior cargada.', 'success');
+                        notify('Previous address loaded.', 'success');
                     }
                 } catch (error) {
-                    // No hacemos nada si hay un error (ej: 404), el usuario simplemente llenará el formulario
-                    console.log('No se encontró dirección anterior o hubo un error al buscarla.');
+                    console.log('No previous address found or error fetching it.');
                 }
             }
         };
@@ -56,7 +53,7 @@ const CheckoutPage = () => {
     }, [formData]);
 
     const subtotal = cart?.items.reduce((sum, item) => sum + item.quantity * item.price, 0) || 0;
-    const shippingCost = shippingMethod === 'express' ? 8000 : 0;
+    const shippingCost = shippingMethod === 'express' ? 8000 : 0; // Ejemplo de costo de envío
     const total = subtotal + shippingCost;
 
     const handleFormChange = (e) => {
@@ -68,46 +65,42 @@ const CheckoutPage = () => {
         e.preventDefault();
         
         if (!isFormValid) {
-            notify('Por favor, completa todos los campos de la dirección de envío.', 'error');
+            notify('Please complete all required shipping address fields.', 'error');
             return;
         }
 
         setIsProcessing(true);
 
         if (!cart || cart.items.length === 0) {
-            notify('Tu carrito está vacío.', 'error');
+            notify('Your cart is empty.', 'error');
             setIsProcessing(false);
             return;
         }
 
         if (paymentMethod === 'mercadoPago') {
             try {
-                // 3. Enviar el formulario (shipping_address) junto con el carrito
                 const preference = await createCheckoutPreference(cart, formData);
                 if (preference.init_point) {
                     window.location.href = preference.init_point;
                 } else {
-                    throw new Error('No se recibió el punto de inicio de pago.');
+                    throw new Error('Could not retrieve payment starting point.');
                 }
             } catch (error) {
-                console.error('Error al crear la preferencia de pago:', error);
-                notify(error.message || 'No se pudo iniciar el proceso de pago.', 'error');
+                console.error('Error creating payment preference:', error);
+                notify(error.message || 'Could not initiate the payment process.', 'error');
                 setIsProcessing(false);
             }
-        } else if (paymentMethod === 'credit') {
-            notify('El pago directo con tarjeta no está implementado en esta versión.', 'error');
-            setIsProcessing(false);
         }
     };
 
     const formatPrice = (price) => {
-        return new Intl.NumberFormat('es-AR', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency', currency: 'ARS',
             minimumFractionDigits: 0, maximumFractionDigits: 0,
         }).format(price).replace("ARS", "$").trim();
     };
 
-    if (cartLoading) return <div className="checkout-page-container"><Spinner message="Cargando..." /></div>;
+    if (cartLoading) return <div className="checkout-page-container"><Spinner message="Loading checkout..." /></div>;
 
     return (
         <main className="checkout-page-container">
@@ -116,8 +109,7 @@ const CheckoutPage = () => {
                 <form id="checkout-form" onSubmit={handlePlaceOrder} className="checkout-form-section">
                     <h2 className="section-title">SHIPPING ADDRESS</h2>
                     <div className="form-grid">
-                        {/* Los inputs no cambian, su valor y onChange ya están conectados al estado formData */}
-                        <div className="input-group">
+                         <div className="input-group">
                             <label htmlFor="firstName">FIRST NAME</label>
                             <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleFormChange} required />
                         </div>
@@ -130,7 +122,7 @@ const CheckoutPage = () => {
                             <input type="text" id="streetAddress" name="streetAddress" value={formData.streetAddress} onChange={handleFormChange} required />
                         </div>
                         <div className="input-group">
-                            <label htmlFor="comments">COMMENTS (OPCIONAL)</label>
+                            <label htmlFor="comments">COMMENTS (OPTIONAL)</label>
                             <input type="text" id="comments" name="comments" value={formData.comments} onChange={handleFormChange} />
                         </div>
                         <div className="input-group">
@@ -160,24 +152,62 @@ const CheckoutPage = () => {
                     </div>
 
                     <h2 className="section-title mt-8">SHIPPING METHOD</h2>
-                    {/* ... Opciones de envío ... */}
+                    <div className="shipping-options">
+                        <div className="radio-option">
+                           <span>{formatPrice(shippingCost)} ARS</span> EXPRESS
+                           <p className="description">DELIVERY BETWEEN 3 TO 5 BUSINESS DAY</p>
+                        </div>
+                    </div>
+
 
                     <h2 className="section-title mt-8">PAYMENT METHOD</h2>
-                    {/* ... Opciones de pago ... */}
+                    <div className="payment-options">
+                        <div className="radio-option">
+                            <p>PAY WITH MERCADO PAGO</p>
+                        </div>
+                    </div>
                 </form>
 
-                <div className="order-summary-section">
+                <aside className="order-summary-section">
                     <h2 className="section-title">ORDER SUMMARY</h2>
-                    {/* ... Resumen de la orden ... */}
+                    
+                    {/* --- ACÁ ESTABA EL PROBLEMA, FIERA --- */}
+                    <div className="order-summary-items">
+                        {cart?.items.map(item => (
+                            <div className="order-item" key={item.variante_id}>
+                                <img src={item.image_url || '/img/placeholder.jpg'} alt={item.name} className="order-item-image"/>
+                                <div className="order-item-details">
+                                    <p className="item-name">{item.name}</p>
+                                    <p className="item-size">SIZE: {item.size}</p>
+                                </div>
+                                <span className="item-price">{formatPrice(item.price)} ARS</span>
+                            </div>
+                        ))}
+                    </div>
+                    {/* --- FIN DEL ARREGLO --- */}
+
+                    <div className="summary-line">
+                        <span>SUBTOTAL</span>
+                        <span>{formatPrice(subtotal)} ARS</span>
+                    </div>
+                    <div className="summary-line">
+                        <span>SHIPPING</span>
+                        <span>{formatPrice(shippingCost)} ARS</span>
+                    </div>
+                    <div className="summary-line total">
+                        <span>TOTAL</span>
+                        <span>{formatPrice(total)} ARS</span>
+                    </div>
+
                     <button 
                         type="submit" 
                         form="checkout-form" 
                         className="place-order-button" 
                         disabled={isProcessing || !isFormValid}
                     >
-                        {isProcessing ? 'PROCESANDO...' : 'PLACE ORDER'}
+                        {isProcessing ? 'PROCESSING...' : 'PLACE ORDER'}
                     </button>
-                </div>
+                </aside>
             </div>
         </main>
     );

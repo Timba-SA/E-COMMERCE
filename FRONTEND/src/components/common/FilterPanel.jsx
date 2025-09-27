@@ -3,15 +3,18 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
 const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
-  const [priceRange, setPriceRange] = useState([0, initialFilters.precio_max]);
+  const [priceRange, setPriceRange] = useState([initialFilters.precio_min, initialFilters.precio_max]);
   const [selectedSizes, setSelectedSizes] = useState(initialFilters.talle || []);
-
+  const [selectedColors, setSelectedColors] = useState(initialFilters.color || []);
+  
+  const availableColors = ['Black', 'White', 'Grey', 'Brown', 'Beige', 'Blue'];
   const minPrice = 0;
   const maxPrice = 200000;
 
   useEffect(() => {
-    setPriceRange([0, initialFilters.precio_max]);
+    setPriceRange([initialFilters.precio_min, initialFilters.precio_max]);
     setSelectedSizes(initialFilters.talle || []);
+    setSelectedColors(initialFilters.color || []); // Ahora recibe una lista vacía por defecto y no se rompe
   }, [initialFilters]);
 
   const handlePriceChange = (newRange) => {
@@ -19,7 +22,7 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
   };
 
   const handleApplyPriceFilter = (newRange) => {
-    onFilterChange({ precio_max: newRange[1] });
+    onFilterChange({ precio_min: newRange[0], precio_max: newRange[1] });
   };
 
   const handleSizeChange = (e) => {
@@ -31,20 +34,32 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
     setSelectedSizes(newSizes);
     onFilterChange({ talle: newSizes });
   };
+  
+  const handleColorChange = (e) => {
+    const { value, checked } = e.target;
+    const newColors = checked
+      ? [...selectedColors, value]
+      : selectedColors.filter(color => color !== value);
+
+    setSelectedColors(newColors);
+    onFilterChange({ color: newColors }); // <-- ¡Le pasamos la lista directamente!
+  };
+
+  const handleSortChange = (e) => {
+    onFilterChange({ sort_by: e.target.value });
+  };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'ARS',
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
     }).format(price).replace("ARS", "").trim();
   };
 
   return (
     <div className={`filter-panel ${isOpen ? 'open' : ''}`}>
       <div className="filter-panel-header">
-        <h2 className="filter-panel-title">FILTROS</h2>
+        <h2 className="filter-panel-title">FILTERS</h2>
         <button className="filter-panel-close-btn" onClick={onClose}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M1 1L17 17M17 1L1 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -53,28 +68,27 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
       </div>
 
       <div className="filter-panel-content">
-        {/* --- ESTRUCTURA RESTAURADA --- */}
-        {/* Gender Filter (Estático) */}
-        <div className="filter-section">
+        <div className="filter-section active">
           <div className="filter-section-header">
-            <span className="filter-section-title">GENDER</span>
-            <span className="filter-section-arrow">&gt;</span>
+            <span className="filter-section-title">SORT BY</span>
+          </div>
+          <div className="filter-section-body">
+            <select 
+              className="sort-dropdown-panel" 
+              value={initialFilters.sort_by} 
+              onChange={handleSortChange}
+            >
+              <option value="nombre_asc">Name (A-Z)</option>
+              <option value="nombre_desc">Name (Z-A)</option>
+              <option value="precio_asc">Price (Low to High)</option>
+              <option value="precio_desc">Price (High to Low)</option>
+            </select>
           </div>
         </div>
 
-        {/* Category Filter (Estático) */}
-        <div className="filter-section">
-          <div className="filter-section-header">
-            <span className="filter-section-title">CATEGORY</span>
-            <span className="filter-section-arrow">&gt;</span>
-          </div>
-        </div>
-
-        {/* Size Filter (Dinámico) */}
         <div className="filter-section active">
           <div className="filter-section-header">
             <span className="filter-section-title">SIZE</span>
-            <span className="filter-section-arrow">&#8964;</span>
           </div>
           <div className="filter-section-body">
             {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
@@ -92,7 +106,6 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
           </div>
         </div>
 
-        {/* Price Filter (Dinámico) */}
         <div className="filter-section active">
           <div className="filter-section-header">
             <span className="filter-section-title">PRICE</span>
@@ -117,14 +130,27 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
             />
           </div>
         </div>
-
-        {/* Color Filter (Estático) */}
-        <div className="filter-section">
+        
+        <div className="filter-section active">
           <div className="filter-section-header">
             <span className="filter-section-title">COLOR</span>
-            <span className="filter-section-arrow">&gt;</span>
+          </div>
+          <div className="filter-section-body">
+            {availableColors.map(color => (
+              <label className="checkbox-container" key={color}>
+                <input 
+                  type="checkbox" 
+                  name="color" 
+                  value={color}
+                  checked={selectedColors.includes(color)}
+                  onChange={handleColorChange}
+                /> {color}
+                <span className="checkmark"></span>
+              </label>
+            ))}
           </div>
         </div>
+        
       </div>
     </div>
   );

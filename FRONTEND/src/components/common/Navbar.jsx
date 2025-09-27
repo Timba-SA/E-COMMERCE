@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore'; // 1. Importar el store de Zustand
-import { CartContext } from '../../context/CartContext'; // 2. Importar el contexto del carrito
+import { useAuthStore } from '../../stores/useAuthStore';
+import { CartContext } from '../../context/CartContext';
+import { useQuery } from '@tanstack/react-query';
+import { getProducts } from '../../api/productsApi';
 
-const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu, onOpenSearch }, ref) => {
-    // 3. Usar los stores/contextos correctos
+const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu }, ref) => {
     const { isAuthenticated, user, isAuthLoading } = useAuthStore();
     const { itemCount } = useContext(CartContext);
     const navigate = useNavigate();
@@ -12,6 +13,13 @@ const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu, onOpenSearch }, ref
     const [isSearching, setIsSearching] = useState(false);
     const [query, setQuery] = useState('');
     const searchInputRef = useRef(null);
+
+    const { data: searchResults, isLoading: isSearchLoading } = useQuery({
+      queryKey: ['search', query],
+      queryFn: () => getProducts({ q: query, limit: 5 }),
+      enabled: query.length > 2,
+      staleTime: 1000 * 60 * 5,
+    });
 
     useEffect(() => {
         if (isSearching) {
@@ -26,6 +34,11 @@ const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu, onOpenSearch }, ref
             setQuery('');
             setIsSearching(false);
         }
+    };
+    
+    const handleResultClick = () => {
+        setQuery('');
+        setIsSearching(false);
     };
 
     return (
@@ -69,11 +82,30 @@ const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu, onOpenSearch }, ref
                   <div className="search-underline"></div>
                 </div>
               )}
+              
+              {isSearching && query.length > 2 && (
+                <div className="search-results-dropdown">
+                  {isSearchLoading && <div className="search-result-item">Searching...</div>}
+                  {searchResults && searchResults.length > 0 && searchResults.map(product => (
+                    <Link 
+                      key={product.id} 
+                      to={`/product/${product.id}`} 
+                      className="search-result-item"
+                      onClick={handleResultClick}
+                    >
+                      <img src={product.urls_imagenes?.[0] || '/img/placeholder.jpg'} alt={product.nombre} />
+                      <span>{product.nombre}</span>
+                    </Link>
+                  ))}
+                  {searchResults && searchResults.length === 0 && !isSearchLoading && (
+                    <div className="search-result-item">No results found.</div>
+                  )}
+                </div>
+              )}
             </div>
             
             <a>LANGUAGE</a>
-
-            {/* Lógica de sesión actualizada con el store */}
+            
             {!isAuthLoading && (
               isAuthenticated ? (
                 <>
@@ -87,7 +119,6 @@ const Navbar = React.forwardRef(({ isMenuOpen, onToggleMenu, onOpenSearch }, ref
               )
             )}
             
-            {/* 4. Enlace al carrito con contador */}
             <Link to="/cart">BAG ({itemCount})</Link>
           </div>
         </nav>
