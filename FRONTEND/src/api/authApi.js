@@ -47,3 +47,25 @@ export const resetPasswordAPI = async (token, new_password) => {
     throw error.response?.data || error;
   }
 };
+// En FRONTEND/src/api/authApi.js
+
+// ... (las otras funciones como login, register, forgotPassword van acá arriba)
+
+/**
+ * Envía la nueva contraseña y el token al backend para resetearla.
+ * @param {string} token - El token recibido en el email.
+ * @param {string} newPassword - La nueva contraseña del usuario.
+ * @returns {Promise<object>} La respuesta del servidor.
+ */
+export const resetPassword = async (token, newPassword) => {
+  try {
+    const response = await axiosClient.post('/api/auth/reset-password', {
+      token: token,
+      new_password: newPassword
+    });
+    return response.data;
+  } catch (error) {
+    // Si el backend tira un error (token inválido, etc.), lo pasamos para que la página lo muestre.
+    throw error.response.data;
+  }
+};

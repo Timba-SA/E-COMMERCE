@@ -65,12 +65,12 @@ const AdminUsersPage = () => {
         <tbody>
           {users.length > 0 ? (
             users.map(user => (
-              <tr key={user.id}>
-                <td title={user.id}>{user.id ? user.id.slice(-6) : 'N/A'}...</td>
+              <tr key={user._id}>
+                <td title={user._id}>{user._id ? user._id.slice(-6) : 'N/A'}...</td>
                 <td>{user.name} {user.last_name}</td>
                 <td>{user.email}</td>
                 <td>
-                  <select value={user.role} onChange={(e) => handleRoleChange(user.id, e.target.value)} className="role-select">
+                  <select value={user.role} onChange={(e) => handleRoleChange(user._id, e.target.value)} className="role-select">
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
                   </select>

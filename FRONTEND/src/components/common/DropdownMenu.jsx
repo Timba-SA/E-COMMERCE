@@ -1,27 +1,77 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-// 1. Recibimos la nueva prop 'logoPosition'
 const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
   const location = useLocation();
-  const currentSubCategory = location.pathname.split('/')[2] || '';
+  const navigate = useNavigate();
+  const currentCategory = location.pathname.split('/')[2] || '';
+  const [activeCategory, setActiveCategory] = useState('menswear');
 
+  useEffect(() => {
+    if (isOpen) {
+      const pathSegments = location.pathname.split('/');
+      const category = pathSegments[1];
+      const subCategory = pathSegments[2];
+
+      if (category === 'catalog') {
+        if (['dresses', 'tops', 'skirts', 'jeans', 'womenswear'].includes(subCategory)) {
+          setActiveCategory('womenswear');
+        } else if (['hoodies', 'jackets', 'shirts', 'pants', 'menswear'].includes(subCategory)) {
+          setActiveCategory('menswear');
+        }
+      } else {
+        setActiveCategory('menswear');
+      }
+    }
+  }, [isOpen, location.pathname]);
+
+  // 1. Función para navegar a una ruta y cerrar el menú (usada por los links finales)
+  const handleNavigateAndClose = (path) => {
+    navigate(path);
+    onClose();
+  };
+
+  // 2. Función para manejar el click en las categorías principales (el toggle)
+  const handleMainCategoryClick = (category, path) => {
+    if (activeCategory === category) {
+      // Si ya está activo: Navega a la ruta principal del catálogo y cierra.
+      handleNavigateAndClose(path);
+    } else {
+      // Si no está activo: Solo cambia la categoría para mostrar el submenú.
+      setActiveCategory(category);
+    }
+  };
+
+  // 3. Función para cerrar el menú cuando se hace click en el logo o en un sub-link
   const handleLinkClick = () => {
     onClose();
   };
 
-  // 2. Creamos el estilo para el logo "fantasma" que se va a alinear.
-  // Solo lo hacemos si tenemos la posición, si no, es un objeto vacío.
+  const categories = {
+    womenswear: [
+      { name: 'DRESSES', path: '/catalog/dresses' },
+      { name: 'TOPS', path: '/catalog/tops' },
+      { name: 'SKIRTS', path: '/catalog/skirts' },
+      { name: 'JEANS', path: '/catalog/jeans' },
+    ],
+    menswear: [
+      { name: 'HOODIES', path: '/catalog/hoodies' },
+      { name: 'JACKETS', path: '/catalog/jackets' },
+      { name: 'SHIRTS', path: '/catalog/shirts' },
+      { name: 'PANTS', path: '/catalog/pants' },
+    ],
+  };
+
   const phantomLogoStyle = logoPosition
     ? {
-        position: 'fixed', // Posición fija para que no se mueva con el scroll
+        position: 'fixed',
         top: `${logoPosition.top}px`,
         left: `${logoPosition.left}px`,
         width: `${logoPosition.width}px`,
         height: `${logoPosition.height}px`,
-        color: 'var(--text-color)', // Para que se vea sobre el fondo blanco
-        zIndex: 2003, // Por encima del menú pero debajo de la X para cerrar
-        pointerEvents: 'none', // Para que no se pueda hacer click en él
+        color: 'var(--text-color)',
+        zIndex: 2003,
+        pointerEvents: 'none',
       }
     : {};
 
@@ -30,8 +80,6 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
       <div className={`overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
       
       <aside className={`dropdown-menu ${isOpen ? 'open' : ''}`}>
-        {/* --- ¡ACÁ VA EL LOGO FANTASMA! --- */}
-        {/* 3. Renderizamos el logo fantasma SOLO si el menú está abierto y tenemos la posición */}
         {isOpen && logoPosition && (
           <div className="logo" style={phantomLogoStyle}>
             VOID
@@ -42,6 +90,7 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
           <button
             className={`close-btn ${isOpen ? 'open' : ''}`}
             aria-label="Cerrar menú"
+            aria-expanded={isOpen}
             onClick={onClose}
           >
             <span></span>
@@ -49,7 +98,6 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
             <span></span>
           </button>
           
-          {/* Este es el logo que se queda en su lugar normal, pero lo hacemos invisible */}
           <Link to="/" className="logo dropdown-logo" onClick={handleLinkClick} style={{ visibility: 'hidden' }}>
               VOID
           </Link>
@@ -59,16 +107,50 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
           <div className="menu-categories">
             <nav className="dropdown-nav-left">
               <ul>
-                <li><Link to="/catalog/womenswear" onClick={handleLinkClick} className="category-link">WOMENSWEAR</Link></li>
-                <li><Link to="/catalog/menswear" onClick={handleLinkClick} className="category-link active-category">MENSWEAR</Link></li>
+                <li>
+                  <div 
+                    onClick={() => handleMainCategoryClick('womenswear', '/catalog/womenswear')} 
+                    className={`category-link ${activeCategory === 'womenswear' ? 'active-category' : ''}`}
+                  >
+                    WOMENSWEAR
+                  </div>
+                </li>
+                <li>
+                  <div 
+                    onClick={() => handleMainCategoryClick('menswear', '/catalog/menswear')} 
+                    className={`category-link ${activeCategory === 'menswear' ? 'active-category' : ''}`}
+                  >
+                    MENSWEAR
+                  </div>
+                </li>
               </ul>
             </nav>
             <nav className="dropdown-nav-right">
               <ul className="submenu active-submenu">
-                <li><Link to="/catalog/hoodies" onClick={handleLinkClick} className={currentSubCategory === 'hoodies' ? 'active-category' : ''}>HOODIES</Link></li>
-                <li><Link to="/catalog/jackets" onClick={handleLinkClick} className={currentSubCategory === 'jackets' ? 'active-category' : ''}>JACKETS</Link></li>
-                <li><Link to="/catalog/shirts" onClick={handleLinkClick} className={currentSubCategory === 'shirts' ? 'active-category' : ''}>SHIRTS</Link></li>
-                <li><Link to="/catalog/pants" onClick={handleLinkClick} className={currentSubCategory === 'pants' ? 'active-category' : ''}>PANTS</Link></li>
+                
+                {/* Agregamos el link para ver todos los productos de la categoría activa */}
+                <li key={`all-${activeCategory}`}>
+                    <Link
+                        to={`/catalog/${activeCategory}`}
+                        onClick={() => handleNavigateAndClose(`/catalog/${activeCategory}`)} 
+                        className="view-all-link"
+                    >
+                        VIEW ALL {activeCategory.toUpperCase()}
+                    </Link>
+                </li>
+                
+                {/* Mapeamos las subcategorías */}
+                {categories[activeCategory] && categories[activeCategory].map(subcategory => (
+                  <li key={subcategory.name}>
+                    <Link 
+                      to={subcategory.path} 
+                      onClick={handleLinkClick} 
+                      className={currentCategory === subcategory.path.split('/')[2] ? 'active-category' : ''}
+                    >
+                      {subcategory.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </nav>
           </div>

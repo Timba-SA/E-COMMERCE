@@ -1,23 +1,14 @@
 version: '3.8'
 
 services:
-  # Único servicio: nuestro backend
   backend:
-    # Construye la imagen usando el Dockerfile que está en esta misma carpeta
     build: .
     container_name: void_backend
-    
-    # Mapea el puerto 8000 de tu máquina al 8000 del contenedor
     ports:
       - "8000:8000"
-      
-    # Sincroniza tu código local con el del contenedor para ver cambios al instante
     volumes:
       - .:/app
-      
-    # Le pasa TODAS las variables de entorno de tu archivo .env al contenedor
+    # Le decimos que busque el archivo .env en la misma carpeta
     env_file:
-      - .env
-      
-    # Reinicia el contenedor si se cae, a menos que lo pares vos
+      - ./.env
     restart: unless-stopped
