@@ -246,11 +246,12 @@ main {
 /* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN DEFINITIVA) --- */
 .dropdown-header {
   display: flex;
-  justify-content: center; /* ¡Centra el logo horizontalmente! */
+  justify-content: space-between; /* ¡LA CLAVE! Esto le da espacio al logo fantasma */
   align-items: center;
   padding: 1.5rem 2rem;
-  position: relative; /* Para que el botón de cerrar se ubique bien */
+  position: relative;
   flex-shrink: 0;
+  height: 96px; /* Misma altura que el navbar para que la 'X' quede perfecta */
 }
 
 /* El botón de cerrar se alinea a la izquierda dentro del header */

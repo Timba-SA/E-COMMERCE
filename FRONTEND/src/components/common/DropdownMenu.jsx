@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const DropdownMenu = ({ isOpen, onClose }) => {
+// 1. Recibimos la nueva prop 'logoPosition'
+const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
   const location = useLocation();
   const currentSubCategory = location.pathname.split('/')[2] || '';
 
@@ -9,11 +10,34 @@ const DropdownMenu = ({ isOpen, onClose }) => {
     onClose();
   };
 
+  // 2. Creamos el estilo para el logo "fantasma" que se va a alinear.
+  // Solo lo hacemos si tenemos la posición, si no, es un objeto vacío.
+  const phantomLogoStyle = logoPosition
+    ? {
+        position: 'fixed', // Posición fija para que no se mueva con el scroll
+        top: `${logoPosition.top}px`,
+        left: `${logoPosition.left}px`,
+        width: `${logoPosition.width}px`,
+        height: `${logoPosition.height}px`,
+        color: 'var(--text-color)', // Para que se vea sobre el fondo blanco
+        zIndex: 2003, // Por encima del menú pero debajo de la X para cerrar
+        pointerEvents: 'none', // Para que no se pueda hacer click en él
+      }
+    : {};
+
   return (
     <>
       <div className={`overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
       
       <aside className={`dropdown-menu ${isOpen ? 'open' : ''}`}>
+        {/* --- ¡ACÁ VA EL LOGO FANTASMA! --- */}
+        {/* 3. Renderizamos el logo fantasma SOLO si el menú está abierto y tenemos la posición */}
+        {isOpen && logoPosition && (
+          <div className="logo" style={phantomLogoStyle}>
+            VOID
+          </div>
+        )}
+
         <div className="dropdown-header">
           <button
             className={`close-btn ${isOpen ? 'open' : ''}`}
@@ -25,9 +49,10 @@ const DropdownMenu = ({ isOpen, onClose }) => {
             <span></span>
           </button>
           
-          {/* ¡CHAU FANTASMAS! AHORA EL LOGO VIVE ACÁ, CENTRADO Y SEGURO */}
-          <Link to="/" className="logo dropdown-logo" onClick={handleLinkClick}>VOID</Link>
-
+          {/* Este es el logo que se queda en su lugar normal, pero lo hacemos invisible */}
+          <Link to="/" className="logo dropdown-logo" onClick={handleLinkClick} style={{ visibility: 'hidden' }}>
+              VOID
+          </Link>
         </div>
 
         <div className="dropdown-content">
