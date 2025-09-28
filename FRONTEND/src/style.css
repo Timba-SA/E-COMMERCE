@@ -230,17 +230,17 @@ main {
     flex-direction: column;
     opacity: 0;
     visibility: hidden;
-    transform: scale(0.98);
-    transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+    /* --- LA SOLUCIÓN DEFINITIVA --- */
+    /* Eliminamos 'transform' de la transición para no romper position:fixed */
+    transition: opacity 0.4s ease, visibility 0.4s;
     z-index: 2002;
 }
 
 .dropdown-menu.open {
     opacity: 1;
     visibility: visible;
-    transform: scale(1);
+    /* Ya no hay 'transform' aquí tampoco */
 }
-
 /* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN FINAL Y CORRECTA) --- */
 
 .dropdown-header {

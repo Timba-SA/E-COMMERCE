@@ -25,7 +25,7 @@ export const useAuthStore = create((set) => ({
   token: null,
   user: null,
   isAuthenticated: false,
-  isAuthLoading: true, // <--- ¡CAMBIO #1: Agregamos el estado de carga!
+  isAuthLoading: true,
 
   fetchUser: async () => {
     try {
@@ -58,7 +58,10 @@ export const useAuthStore = create((set) => ({
 
   logout: () => {
     localStorage.removeItem('authToken');
-    // --- ¡CAMBIO #2: Al desloguear, ya no estamos cargando! ---
+    // --- LA SOLUCIÓN DEFINITIVA ESTÁ ACÁ ---
+    // Al cerrar sesión, también eliminamos el ID del carrito de invitado.
+    localStorage.removeItem('guestSessionId');
+    // ------------------------------------
     set({ token: null, user: null, isAuthenticated: false, isAuthLoading: false });
   },
 
@@ -79,7 +82,6 @@ export const useAuthStore = create((set) => ({
         localStorage.removeItem('authToken');
       }
     }
-    // --- ¡CAMBIO #3: Pase lo que pase, al final del chequeo, terminamos de cargar! ---
     set({ isAuthLoading: false });
   },
 }));

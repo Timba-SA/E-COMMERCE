@@ -1,43 +1,39 @@
-// En FRONTEND/src/components/common/DropdownMenu.jsx
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
-  // Estado para controlar qué categoría principal está activa. Por defecto, 'menswear'.
   const [activeCategory, setActiveCategory] = useState('menswear');
   
-  // Hook para saber la URL actual y resaltar el link de la subcategoría.
   const location = useLocation();
   const currentSubCategory = location.pathname.split('/')[2] || '';
 
-  // Esta función es para los links de las subcategorías (Hoodies, Pants, etc.)
-  // Cierra el menú después de hacer clic.
   const handleLinkClick = () => {
     onClose();
   };
 
-  // 1. Nueva función para manejar el clic en las categorías principales.
-  // Previene que el <Link> navegue y solo cambia la vista del submenú.
   const handleCategoryClick = (e, category) => {
     e.preventDefault();
     setActiveCategory(category);
   };
 
+  // Para evitar errores si al principio las coordenadas no existen
   const effectiveLogoPosition = logoPosition || { top: 0, left: 0, width: 0, height: 0 };
+
+  // Los estilos en línea que hacen la magia de alineación
   const logoStyle = {
     position: 'fixed',
     top: `${effectiveLogoPosition.top}px`,
     left: `${effectiveLogoPosition.left}px`,
     width: `${effectiveLogoPosition.width}px`,
     height: `${effectiveLogoPosition.height}px`,
-    color: '#000',
+    color: '#000', // Color negro sobre fondo blanco
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2003,
-    opacity: isOpen ? 1 : 0,
+    opacity: isOpen ? 1 : 0, // Aparece y desaparece con el menú
     transition: 'opacity 0.2s ease-in-out',
-    pointerEvents: 'none',
+    pointerEvents: 'none', // Para que no interfiera con los clics
   };
 
   return (
@@ -53,13 +49,13 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
           </button>
         </div>
         
+        {/* El logo "fantasma" que se alinea perfectamente */}
         <div className="logo" style={logoStyle}>VOID</div>
 
         <div className="dropdown-content">
           <div className="menu-categories">
             <nav className="dropdown-nav-left">
               <ul>
-                {/* 2. Cambiamos onMouseEnter por onClick y usamos la nueva función */}
                 <li>
                   <Link 
                     to="/catalog/womenswear" 
@@ -81,12 +77,10 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
               </ul>
             </nav>
             <nav className="dropdown-nav-right">
-              {/* Los submenús siguen funcionando igual, mostrando solo el activo */}
               <ul className={`submenu ${activeCategory === 'womenswear' ? 'active-submenu' : ''}`}>
                 <li><Link to="/catalog/dresses" onClick={handleLinkClick} className={currentSubCategory === 'dresses' ? 'active-category' : ''}>DRESSES</Link></li>
                 <li><Link to="/catalog/tops" onClick={handleLinkClick} className={currentSubCategory === 'tops' ? 'active-category' : ''}>TOPS</Link></li>
               </ul>
-
               <ul className={`submenu ${activeCategory === 'menswear' ? 'active-submenu' : ''}`}>
                 <li><Link to="/catalog/hoodies" onClick={handleLinkClick} className={currentSubCategory === 'hoodies' ? 'active-category' : ''}>HOODIES</Link></li>
                 <li><Link to="/catalog/jackets" onClick={handleLinkClick} className={currentSubCategory === 'jackets' ? 'active-category' : ''}>JACKETS</Link></li>

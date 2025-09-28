@@ -5,7 +5,6 @@ import { getMyOrdersAPI } from '../api/ordersApi';
 import Spinner from '../components/common/Spinner';
 import { useNavigate } from 'react-router-dom';
 
-// Importamos los nuevos componentes que creamos
 const ProfileManagement = lazy(() => import('../components/account/ProfileManagement'));
 const AddressManagement = lazy(() => import('../components/account/AddressManagement'));
 
@@ -13,7 +12,7 @@ const AccountPage = () => {
   const { user, logout } = useAuthStore();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('orders'); // Estado para controlar la vista
+  const [activeView, setActiveView] = useState('orders');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,8 +33,16 @@ const AccountPage = () => {
   }, [activeView]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    // --- LA SOLUCIÓN DEFINITIVA ESTÁ AQUÍ ---
+    // 1. PRIMERO, iniciamos la navegación a la página principal.
+    navigate('/');
+    
+    // 2. DESPUÉS, envolvemos el logout en un setTimeout de 0ms.
+    // Esto lo envía al final de la cola de ejecución, dándole
+    // prioridad a la navegación para que comience sin ser interrumpida.
+    setTimeout(() => {
+      logout();
+    }, 0);
   };
   
   const formatPrice = (price) => {
