@@ -15,11 +15,16 @@ logger = logging.getLogger(__name__)
 # --- Carga de variables de entorno ---
 load_dotenv()
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!! ARREGLO A LO BESTIA PORQUE DOCKER NO LEE EL .ENV !!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # <-- NUEVO
+FRONTEND_URL = "http://localhost:5173" # <-- LA METEMOS A MANO ACÁ
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
 
 # --- Verificación de configuración ---
 if not all([EMAIL_SENDER, EMAIL_PASSWORD]):
