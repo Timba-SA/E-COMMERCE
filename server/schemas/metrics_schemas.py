@@ -1,3 +1,4 @@
+# En backend/schemas/metrics_schemas.py
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date
@@ -8,6 +9,7 @@ class KPIMetrics(BaseModel):
     total_orders: int
     total_users: int
     total_expenses: float
+    total_products_sold: int # <-- ¡LÍNEA NUEVA!
 
 class ProductMetrics(BaseModel):
     most_sold_product: Optional[str] = None

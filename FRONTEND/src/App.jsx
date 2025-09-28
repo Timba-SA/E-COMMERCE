@@ -1,11 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-
-// --- Store y Contexto ---
 import { useAuthStore } from './stores/useAuthStore';
-
-// --- Componentes ---
 import Navbar from '@/components/common/Navbar.jsx';
 import Footer from '@/components/common/Footer.jsx';
 import DropdownMenu from '@/components/common/DropdownMenu.jsx';
@@ -16,7 +12,7 @@ import Chatbot from '@/components/common/Chatbot.jsx';
 import AdminLayout from '@/pages/AdminLayout.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
 
-// --- Páginas (Carga Diferida) ---
+// --- Tus Páginas ---
 const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
@@ -41,35 +37,42 @@ const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
 const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage.jsx'));
 
-
 const AppContent = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // --- ¡VUELVE LA LÓGICA DEL LOGO! ---
   const logoRef = useRef(null);
   const [logoPosition, setLogoPosition] = useState(null);
-  
   const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  
   const { isAuthLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  // --- EFECTO PARA MEDIR LA POSICIÓN DEL LOGO ---
   useEffect(() => {
     const updatePosition = () => {
       if (logoRef.current) {
-        setLogoPosition(logoRef.current.getBoundingClientRect());
+        const rect = logoRef.current.getBoundingClientRect();
+        const xOffset = 100; // <-- Aumenta este número para moverlo más a la derecha.
+
+        setLogoPosition({
+          top: rect.top,
+          right: rect.right + xOffset,
+          bottom: rect.bottom,
+          left: rect.left + xOffset,
+          width: rect.width,
+          height: rect.height,
+          x: rect.x + xOffset,
+          y: rect.y,
+        });
       }
     };
     requestAnimationFrame(updatePosition);
     window.addEventListener('resize', updatePosition);
     return () => window.removeEventListener('resize', updatePosition);
-  }, []);
+  }, []);;
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const handleSetAddedItem = (item) => setAddedItem(item);
@@ -107,7 +110,7 @@ const AppContent = () => {
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
         onOpenSearch={handleOpenSearch}
-        ref={logoRef} // Le pasamos la "etiqueta" al Navbar para poder medirlo
+        ref={logoRef}
       />
       <Suspense fallback={<Spinner message="Cargando página..." />}>
         <Routes>
@@ -148,7 +151,6 @@ const AppContent = () => {
       </Suspense>
       <Footer />
       
-      {/* ¡LE PASAMOS LA POSICIÓN AL MENÚ! */}
       <DropdownMenu 
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 

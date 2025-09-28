@@ -11,10 +11,11 @@ from services.auth_services import get_current_admin_user
 from pymongo.database import Database
 from bson import ObjectId
 from sqlalchemy.orm import joinedload
+
 router = APIRouter(
     prefix="/api/admin",
     tags=["Admin"],
-    dependencies=[Depends(get_current_admin_user)] # ¡Perfecto! Esto protege todo el router.
+    dependencies=[Depends(get_current_admin_user)]
 )
 
 # --- Endpoints de Gastos ---
@@ -37,7 +38,6 @@ async def create_expense(gasto: admin_schemas.GastoCreate, db: AsyncSession = De
 
 @router.get("/sales", response_model=List[admin_schemas.Orden])
 async def get_sales(db: AsyncSession = Depends(get_db)):
-    # Para que la respuesta sea completa, cargamos los detalles de cada orden
     result = await db.execute(
         select(Orden).options(joinedload(Orden.detalles))
     )
@@ -47,9 +47,7 @@ async def get_sales(db: AsyncSession = Depends(get_db)):
 @router.post("/sales", status_code=201)
 async def create_manual_sale(sale_data: admin_schemas.ManualSaleCreate, db: AsyncSession = Depends(get_db)):
     total_calculado = 0
-    # Verificamos el precio de cada variante y calculamos el total
     for item in sale_data.items:
-        # Hacemos un join para acceder al precio del producto padre
         result = await db.execute(
             select(Producto.precio)
             .join(VarianteProducto)
@@ -64,14 +62,12 @@ async def create_manual_sale(sale_data: admin_schemas.ManualSaleCreate, db: Asyn
         usuario_id=sale_data.usuario_id,
         monto_total=total_calculado,
         estado=sale_data.estado,
-        estado_pago="pagado" # Asumimos que una venta manual ya está pagada
+        estado_pago="pagado"
     )
     db.add(new_order)
-    await db.flush() # Para tener el new_order.id disponible para los detalles
+    await db.flush()
 
-    # Creamos los detalles de la orden
     for item in sale_data.items:
-        # Re-calculamos el precio acá para asegurar consistencia
         result = await db.execute(
             select(Producto.precio)
             .join(VarianteProducto)
@@ -91,11 +87,6 @@ async def create_manual_sale(sale_data: admin_schemas.ManualSaleCreate, db: Asyn
     await db.refresh(new_order)
     return {"message": "Venta manual registrada exitosamente", "order_id": new_order.id}
 
-# --- AVISO: Los Endpoints de Productos se eliminaron de acá ---
-# Ahora viven exclusivamente en `routers/products_router.py`,
-# que ya tiene la protección para que solo los admins puedan usarlos.
-# ¡Mucho más limpio y ordenado!
-
 # --- Endpoints de Usuarios ---
 
 @router.get("/users", response_model=List[user_schemas.UserOut])
@@ -103,12 +94,8 @@ async def get_users(db: Database = Depends(get_db_nosql)):
     users_cursor = db.users.find({})
     users_list = await users_cursor.to_list(length=None)
     
-    # Procesa la lista para asegurar que el ID es un string
     processed_users = []
     for user_doc in users_list:
-        # Pydantic v2 usa model_validate para parsear un dict.
-        # El schema UserOut ya se encarga de alias 'id' a '_id' y convertirlo a string.
-        # Esto asegura que la conversión se haga de forma explícita y robusta.
         validated_user = user_schemas.UserOut.model_validate(user_doc)
         processed_users.append(validated_user)
         
@@ -116,27 +103,20 @@ async def get_users(db: Database = Depends(get_db_nosql)):
 
 @router.put("/users/{user_id}/role", response_model=user_schemas.UserOut, summary="Actualizar rol de un usuario")
 async def update_user_role(user_id: str, user_update: user_schemas.UserUpdateRole, db: Database = Depends(get_db_nosql)):
-    """
-    Actualiza el rol de un usuario específico por su ID.
-    Permite promover a 'admin', degradar a 'user' o asignar cualquier otro rol.
-    """
     try:
         object_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID de usuario inválido")
 
-    # Verificamos que el usuario exista
     user = await db.users.find_one({"_id": object_id})
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
-    # Actualizamos el documento
     await db.users.update_one(
         {"_id": object_id},
         {"$set": {"role": user_update.role}}
     )
 
-    # Devolvemos el usuario actualizado para confirmar el cambio
     updated_user = await db.users.find_one({"_id": object_id})
     return user_schemas.UserOut(**updated_user)
 
@@ -144,10 +124,10 @@ async def update_user_role(user_id: str, user_update: user_schemas.UserUpdateRol
 
 @router.get("/metrics/kpis", response_model=metrics_schemas.KPIMetrics)
 async def get_kpis(db: AsyncSession = Depends(get_db), db_nosql: Database = Depends(get_db_nosql)):
-    total_revenue_result = await db.execute(select(func.sum(Orden.monto_total)))
+    total_revenue_result = await db.execute(select(func.sum(Orden.monto_total)).where(Orden.estado_pago == "Aprobado"))
     total_revenue = total_revenue_result.scalar_one_or_none() or 0.0
 
-    total_orders_result = await db.execute(select(func.count(Orden.id)))
+    total_orders_result = await db.execute(select(func.count(Orden.id)).where(Orden.estado_pago == "Aprobado"))
     total_orders = total_orders_result.scalar_one_or_none() or 0
 
     average_ticket = total_revenue / total_orders if total_orders > 0 else 0.0
@@ -157,12 +137,22 @@ async def get_kpis(db: AsyncSession = Depends(get_db), db_nosql: Database = Depe
     total_expenses_result = await db.execute(select(func.sum(Gasto.monto)))
     total_expenses = total_expenses_result.scalar_one_or_none() or 0.0
 
+    # --- ¡ACÁ ESTÁ EL ARREGLO DEL BUG! ---
+    # Ahora solo suma las cantidades de las órdenes APROBADAS
+    total_products_sold_result = await db.execute(
+        select(func.sum(DetalleOrden.cantidad))
+        .join(Orden, DetalleOrden.orden_id == Orden.id)
+        .where(Orden.estado_pago == "Aprobado")
+    )
+    total_products_sold = total_products_sold_result.scalar_one_or_none() or 0
+
     return metrics_schemas.KPIMetrics(
         total_revenue=float(total_revenue),
         average_ticket=float(average_ticket),
         total_orders=total_orders,
         total_users=total_users,
-        total_expenses=float(total_expenses)
+        total_expenses=float(total_expenses),
+        total_products_sold=total_products_sold
     )
 
 @router.get("/metrics/products", response_model=metrics_schemas.ProductMetrics)
@@ -208,6 +198,7 @@ async def get_sales_over_time(db: AsyncSession = Depends(get_db)):
             func.date(Orden.creado_en).label("fecha"),
             func.sum(Orden.monto_total).label("total")
         )
+        .where(Orden.estado_pago == "Aprobado") # <-- También lo filtramos acá
         .group_by(func.date(Orden.creado_en))
         .order_by(func.date(Orden.creado_en))
     )

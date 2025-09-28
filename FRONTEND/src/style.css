@@ -230,8 +230,7 @@ main {
     flex-direction: column;
     opacity: 0;
     visibility: hidden;
-    /* --- LA SOLUCIÓN DEFINITIVA --- */
-    /* Eliminamos 'transform' de la transición para no romper position:fixed */
+    /* Le sacamos el 'transform' a la transición. ESA es la clave. */
     transition: opacity 0.4s ease, visibility 0.4s;
     z-index: 2002;
 }
@@ -239,33 +238,38 @@ main {
 .dropdown-menu.open {
     opacity: 1;
     visibility: visible;
-    /* Ya no hay 'transform' aquí tampoco */
+    /* Y acá ya no hace falta el 'transform' */
 }
 /* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN FINAL Y CORRECTA) --- */
 
+/* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN POSTA) --- */
+/* --- ESTILOS PARA EL HEADER DEL DROPDOWN (VERSIÓN DEFINITIVA) --- */
 .dropdown-header {
-  /* Lo dejamos como un bloque simple con posición relativa */
-  position: relative;
+  display: flex;
+  justify-content: center; /* ¡Centra el logo horizontalmente! */
+  align-items: center;
   padding: 1.5rem 2rem;
-  /* La altura es importante para que el botón de cerrar se alinee verticalmente */
-  height: 96px; /* Misma altura que el header principal */
-  flex-shrink: 0; /* Evita que se encoja si el contenido es grande */
+  position: relative; /* Para que el botón de cerrar se ubique bien */
+  flex-shrink: 0;
 }
 
-/* El botón de cerrar se posiciona de forma absoluta DENTRO del header */
+/* El botón de cerrar se alinea a la izquierda dentro del header */
 .close-btn {
-  position: absolute;
-  left: 2rem;
-  top: 50%;
-  transform: translateY(-50%); /* Centrado vertical perfecto */
-  z-index: 2004; /* Por encima del logo fantasma para que se pueda clickear */
-} 
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2003; /* Para que esté por encima del logo si se superponen */
+}
 
-/* Un contenedor nuevo solo para centrar el logo */
-.dropdown-logo-container {
-  flex-grow: 1; /* Ocupa todo el espacio disponible */
-  display: flex;
-  justify-content: center; /* ¡Y centra el logo en el medio! */
+/* El logo del menú */
+.dropdown-logo {
+  font-family: var(--font-logo);
+  font-size: 60px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--text-color); /* Color negro, para que se vea en el fondo blanco */
+  line-height: 1;
 }
 
 /* El estilo para el logo de adentro del menú */

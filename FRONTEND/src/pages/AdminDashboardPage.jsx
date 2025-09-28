@@ -3,7 +3,7 @@ import {
     getKpisAPI, 
     getSalesOverTimeAPI, 
     getExpensesByCategoryAPI 
-} from '../api/adminApi'; // 1. Importar todas las APIs de métricas
+} from '../api/adminApi';
 import Spinner from '../components/common/Spinner';
 import AdminCharts from '../components/admin/AdminCharts';
 
@@ -18,7 +18,6 @@ const AdminDashboardPage = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // 2. Usar Promise.all para cargar todos los datos en paralelo
         const [kpisResponse, salesResponse, expensesResponse] = await Promise.all([
           getKpisAPI(),
           getSalesOverTimeAPI(),
@@ -62,6 +61,14 @@ const AdminDashboardPage = () => {
               <h3>Órdenes Totales</h3>
               <p className="widget-value">{kpis.total_orders}</p>
             </div>
+
+            {/* --- ¡WIDGET NUEVO AGREGADO ACÁ! --- */}
+            <div className="widget">
+              <h3>Productos Vendidos</h3>
+              <p className="widget-value">{kpis.total_products_sold}</p>
+            </div>
+            {/* --- FIN DEL WIDGET NUEVO --- */}
+
              <div className="widget">
               <h3>Usuarios Registrados</h3>
               <p className="widget-value">{kpis.total_users}</p>
@@ -73,7 +80,6 @@ const AdminDashboardPage = () => {
           </div>
         )}
         <div className="dashboard-charts-section">
-          {/* 3. Pasar los datos de los gráficos como props al componente hijo */}
           <AdminCharts salesData={salesData} expensesData={expensesData} />
         </div>
     </div>
