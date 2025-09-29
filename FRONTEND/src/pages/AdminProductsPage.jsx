@@ -1,6 +1,8 @@
+// timba-sa/e-commerce/E-COMMERCE-50c1d7d8a49ac0891dda9940c53fddb-57630ff63/FRONTEND/src/pages/AdminProductsPage.jsx
+
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { getProducts, deleteProductAPI } from '../api/productsApi';
+import { getProducts, deleteProduct } from '@/api/productsApi'; // <-- ¡ACÁ ESTÁ EL CAMBIO!
 import { NotificationContext } from '../context/NotificationContext';
 import Spinner from '../components/common/Spinner';
 
@@ -33,7 +35,7 @@ const AdminProductsPage = () => {
       return;
     }
     try {
-      await deleteProductAPI(productId);
+      await deleteProduct(productId);
       setProducts(products.filter(p => p.id !== productId));
       notify('Product deleted successfully.', 'success');
     } catch (err) {
@@ -55,7 +57,6 @@ const AdminProductsPage = () => {
       <table className="admin-table">
         <thead>
           <tr>
-            {/* YA NO ESTÁ LA COLUMNA "IMAGE" */}
             <th>ID</th>
             <th>Name</th>
             <th>Price</th>
@@ -72,7 +73,6 @@ const AdminProductsPage = () => {
 
               return (
                 <tr key={product.id}>
-                  {/* TAMPOCO ESTÁ LA CELDA DE LA IMAGEN */}
                   <td>{product.id}</td>
                   <td>{product.nombre}</td>
                   <td>${product.precio}</td>

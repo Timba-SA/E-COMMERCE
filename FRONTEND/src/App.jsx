@@ -1,3 +1,5 @@
+// timba-sa/e-commerce/E-COMMERCE-50c1d7d8a49ac0891dda9940c53fddb57630ff63/FRONTEND/src/App.jsx
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -5,14 +7,13 @@ import { useAuthStore } from './stores/useAuthStore';
 import Navbar from '@/components/common/Navbar.jsx';
 import Footer from '@/components/common/Footer.jsx';
 import DropdownMenu from '@/components/common/DropdownMenu.jsx';
-import ProtectedRoute from '@/components/common/ProtectedRoute.jsx'; // Ya lo estabas importando, ¡joya!
+import ProtectedRoute from '@/components/common/ProtectedRoute.jsx';
 import CartNotificationModal from '@/components/products/CartNotificationModal.jsx';
 import SearchModal from '@/components/common/SearchModal.jsx';
 import Chatbot from '@/components/common/Chatbot.jsx';
-import AdminLayout from '@/pages/AdminLayout.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
 
-// --- Tus Páginas ---
+// --- Páginas (lazy-loaded para mejor performance) ---
 const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
@@ -23,6 +24,15 @@ const SearchResultsPage = lazy(() => import('@/pages/SearchResultsPage.jsx'));
 const PaymentSuccessPage = lazy(() => import('@/pages/PaymentSuccessPage.jsx'));
 const PaymentFailurePage = lazy(() => import('@/pages/PaymentFailurePage.jsx'));
 const PaymentPendingPage = lazy(() => import('@/pages/PaymentPendingPage.jsx'));
+const AboutPage = lazy(() => import('@/pages/AboutPage.jsx'));
+const AccountPage = lazy(() => import('@/pages/AccountPage.jsx'));
+const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
+const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage.jsx'));
+
+// --- Layout y Páginas de Admin ---
+const AdminLayout = lazy(() => import('@/pages/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage.jsx'));
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage.jsx'));
 const AdminProductFormPage = lazy(() => import('@/pages/AdminProductFormPage.jsx'));
@@ -30,12 +40,7 @@ const AdminProductVariantsPage = lazy(() => import('@/pages/AdminProductVariants
 const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage.jsx'));
 const AdminOrderDetailPage = lazy(() => import('@/pages/AdminOrderDetailPage.jsx'));
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage.jsx'));
-const AboutPage = lazy(() => import('@/pages/AboutPage.jsx'));
-const AccountPage = lazy(() => import('@/pages/AccountPage.jsx'));
-const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
-const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
-const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
-const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage.jsx'));
+
 
 const AppContent = () => {
   const location = useLocation();
@@ -127,10 +132,7 @@ const AppContent = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/cart" element={<CartPage />} />
-            
-            {/* --- ¡ACÁ ESTÁ LA MAGIA, CAMPEÓN! --- */}
-            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-            
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -140,7 +142,9 @@ const AppContent = () => {
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failure" element={<PaymentFailurePage />} />
             <Route path="/payment/pending" element={<PaymentPendingPage />} />
-            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
+
+            {/* --- RUTA DE ADMIN CORREGIDA --- */}
+            <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="products" element={<AdminProductsPage />} />
                 <Route path="products/new" element={<AdminProductFormPage />} />
