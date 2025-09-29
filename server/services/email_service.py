@@ -1,26 +1,22 @@
 # En backend/services/email_service.py
 
-import os
 import asyncio
 import aiosmtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
+from settings import settings
 
 # --- Configuración de logging ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- Carga de variables de entorno ---
-load_dotenv()
-
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # !!! ARREGLO A LO BESTIA PORQUE DOCKER NO LEE EL .ENV !!!
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-EMAIL_SENDER = os.getenv("EMAIL_SENDER")
-EMAIL_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
-FRONTEND_URL = "http://localhost:5173" # <-- LA METEMOS A MANO ACÁ
+EMAIL_SENDER = settings.EMAIL_SENDER
+EMAIL_PASSWORD = settings.EMAIL_APP_PASSWORD
+FRONTEND_URL = settings.FRONTEND_URL
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 SMTP_SERVER = "smtp.gmail.com"
@@ -115,7 +111,7 @@ async def send_password_reset_email(receiver_email: str, token: str):
         logger.error("El servicio de email no está configurado para enviar el reseteo de contraseña.")
         return
 
-    reset_link = f"{FRONTEND_URL}/reset-password/{token}"
+    reset_link = f"{settings.FRONTEND_URL}/reset-password/{token}"
 
     message = MIMEMultipart("alternative")
     message["Subject"] = "Recuperación de Contraseña - VOID"

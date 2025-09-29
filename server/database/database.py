@@ -1,18 +1,14 @@
 # En BACKEND/database/database.py
 
-import os
-from dotenv import load_dotenv
+from settings import settings
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from motor.motor_asyncio import AsyncIOMotorClient
 
-# Carga las variables del archivo .env
-load_dotenv()
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQL (MySQL) ---
-# CORREGIDO: Leemos la URL completa directamente desde el .env
-DATABASE_URL = os.getenv("DB_SQL_URI")
+DATABASE_URL = settings.DB_SQL_URI
 
 # El engine es necesario para el lifespan en main.py y para el chequeo
 engine = create_async_engine(DATABASE_URL)
@@ -39,8 +35,7 @@ async def check_sql_connection():
         return {"database": "MySQL", "status": "error", "message": str(e)}
 
 # --- 2. CONFIGURACIÓN DE LA BASE DE DATOS NoSQL (MongoDB) ---
-# CORREGIDO: Leemos la URI completa desde el .env
-MONGO_URI = os.getenv("DB_NOSQL_URI")
+MONGO_URI = settings.DB_NOSQL_URI
 
 # CORREGIDO: Creamos el cliente y obtenemos la base de datos por defecto desde la URI
 client = AsyncIOMotorClient(MONGO_URI)

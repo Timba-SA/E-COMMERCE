@@ -1,21 +1,18 @@
 # En BACKEND/services/cloudinary_service.py
 
+import os
 import cloudinary
 import cloudinary.uploader
-import os
 import re # Importamos el módulo de expresiones regulares
-from dotenv import load_dotenv
+from settings import settings
 from fastapi import HTTPException, UploadFile, status
 from typing import List
 
-# Carga las variables de entorno del .env
-load_dotenv()
-
 # --- Configuración de Cloudinary ---
 cloudinary.config(
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key = os.getenv("CLOUDINARY_API_KEY"),
-    api_secret = os.getenv("CLOUDINARY_API_SECRET"),
+    cloud_name = settings.CLOUDINARY_CLOUD_NAME,
+    api_key = settings.CLOUDINARY_API_KEY,
+    api_secret = settings.CLOUDINARY_API_SECRET,
     secure=True
 )
 

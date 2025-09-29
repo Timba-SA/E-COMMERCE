@@ -1,25 +1,22 @@
 # En backend/services/ia_services.py
 
-import os
 import logging
 import httpx
 from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from dotenv import load_dotenv
-
+from settings import settings
 from database.models import Producto, ConversacionIA
 
-load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURACIÓN PARA OPENROUTER (MISTRAL) ---
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-7b-instruct:free")
-SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost:5173")
-SITE_NAME = os.getenv("YOUR_SITE_NAME", "VOID E-Commerce")
+API_KEY = settings.OPENROUTER_API_KEY
+API_URL = settings.OPENROUTER_API_URL
+MODEL_NAME = settings.OPENROUTER_MODEL
+SITE_URL = settings.FRONTEND_URL
+SITE_NAME = settings.SITE_NAME
 
 class OpenRouterServiceError(Exception):
     pass
@@ -71,13 +68,13 @@ async def get_ia_response(system_prompt: str, catalog_context: str, chat_history
     if not API_KEY:
         raise OpenRouterServiceError("No se encontró la OPENROUTER_API_KEY en el archivo .env")
 
-    headers = { "Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json", "HTTP-Referer": SITE_URL, "X-Title": SITE_NAME }
+    headers = { "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": settings.FRONTEND_URL, "X-Title": settings.SITE_NAME }
     messages = _build_messages_for_openrouter(system_prompt, catalog_context, chat_history)
-    body = { "model": MODEL_NAME, "messages": messages }
+    body = { "model": settings.OPENROUTER_MODEL, "messages": messages }
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(API_URL, headers=headers, json=body, timeout=40)
+            response = await client.post(settings.OPENROUTER_API_URL, headers=headers, json=body, timeout=40)
 
         if response.status_code != 200:
             logger.error(f"Error de OpenRouter: STATUS={response.status_code}, BODY={response.text}")

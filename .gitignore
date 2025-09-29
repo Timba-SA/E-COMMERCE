@@ -1,8 +1,10 @@
 # Archivos de Entorno
 .env
+.env.*
+!.env.example
 
 # Entorno Virtual de Python
-venv/
+.venv/
 
 # Bases de datos locales de prueba
 test.db

@@ -1,25 +1,21 @@
 import mercadopago
-import os
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-
+from settings import settings
 from database.database import get_db
 from database.models import Orden, DetalleOrden, VarianteProducto, Producto
 from schemas import checkout_schemas
-from dotenv import load_dotenv
-
-load_dotenv()
 
 router = APIRouter(prefix="/api/checkout", tags=["Checkout"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_TOKEN"))
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+sdk = settings.MERCADOPAGO_TOKEN and mercadopago.SDK(settings.MERCADOPAGO_TOKEN)
+FRONTEND_URL = settings.FRONTEND_URL
+BACKEND_URL = settings.BACKEND_URL
 
 # 1. HELPER ACTUALIZADO: Ahora acepta la dirección de envío
 async def save_order_and_update_stock(
@@ -109,8 +105,8 @@ async def create_preference(request_data: checkout_schemas.PreferenceRequest, db
                 "zip_code": address.postalCode
             }
         },
-        "back_urls": {"success": f"{FRONTEND_URL}/payment/success"},
-        "notification_url": f"{BACKEND_URL}/api/checkout/webhook",
+        "back_urls": {"success": f"{settings.FRONTEND_URL}/payment/success"},
+        "notification_url": f"{settings.BACKEND_URL}/api/checkout/webhook",
         "external_reference": str(external_reference)
     }
     
