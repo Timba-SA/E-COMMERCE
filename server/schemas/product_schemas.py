@@ -1,60 +1,67 @@
 # En backend/schemas/product_schemas.py
 
-from pydantic import BaseModel, Field
-from typing import Optional,List
+from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
+from typing import List, Optional, Annotated
+from bson import ObjectId
 
-# --- CAMBIO NUEVO: Schema para las Variantes ---
+# --- Este es el traductor mágico para que Pydantic entienda el _id de Mongo ---
+PyObjectId = Annotated[str, BeforeValidator(str)]
+
 class VarianteProducto(BaseModel):
-    id: int
+    id: int # Asumimos que las variantes sí tienen un ID numérico simple
     producto_id: int
     tamanio: str
     color: str
     cantidad_en_stock: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Schema base del producto, con los campos comunes
+
 class ProductBase(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     precio: float
     sku: str
-    urls_imagenes: Optional[List[str]] = None # <-- Ahora es una lista de strings
+    urls_imagenes: Optional[List[str]] = []
     material: Optional[str] = None
     talle: Optional[str] = None
     color: Optional[str] = None
-    stock: int = Field(..., ge=0) # Nuevo campo para el stock
+    stock: int = Field(..., ge=0)
     categoria_id: int
+    variantes: List[VarianteProducto] = []
 
-# Schema para crear un producto (todos los campos de ProductBase son requeridos)
+
 class ProductCreate(ProductBase):
     pass
 
-# Schema para actualizar un producto (todos los campos son opcionales)
+
 class ProductUpdate(BaseModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
     precio: Optional[float] = None
     sku: Optional[str] = None
-    urls_imagenes: Optional[List[str]] = None # <-- También acá
+    urls_imagenes: Optional[List[str]] = None
     material: Optional[str] = None
     talle: Optional[str] = None
     color: Optional[str] = None
-    stock: Optional[int] = Field(None, ge=0) # Nuevo campo para el stock
+    stock: Optional[int] = Field(None, ge=0)
     categoria_id: Optional[int] = None
 
-# Schema para mostrar un producto en la base de datos (incluye el id)
-class Product(ProductBase):
-    id: int
-    variantes: List[VarianteProducto] = [] #CAMBIO NUEVO!!!
-    class Config:
-        from_attributes = True # Permite que Pydantic lea los datos desde un objeto de SQLAlchemy
 
-# --- NUEVO: Schema para las Categorías ---
+# --- ACÁ ESTÁ EL CAMBIO CLAVE ---
+# Esta es la plantilla para mostrar un producto de MongoDB
+class Product(ProductBase):
+    # Le decimos que el campo "_id" de mongo lo mapee a "id" como un string
+    id: PyObjectId = Field(alias="_id", default=None)
+
+    model_config = ConfigDict(
+        populate_by_name=True,  # Permite usar el alias "_id"
+        arbitrary_types_allowed=True, # Necesario para ObjectId
+        json_encoders={ObjectId: str} # Le dice cómo convertir el ObjectId a texto
+    )
+
 class Categoria(BaseModel):
     id: int
     nombre: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

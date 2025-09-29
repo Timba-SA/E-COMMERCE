@@ -5,7 +5,7 @@ import { useAuthStore } from './stores/useAuthStore';
 import Navbar from '@/components/common/Navbar.jsx';
 import Footer from '@/components/common/Footer.jsx';
 import DropdownMenu from '@/components/common/DropdownMenu.jsx';
-import ProtectedRoute from '@/components/common/ProtectedRoute.jsx';
+import ProtectedRoute from '@/components/common/ProtectedRoute.jsx'; // Ya lo estabas importando, ¡joya!
 import CartNotificationModal from '@/components/products/CartNotificationModal.jsx';
 import SearchModal from '@/components/common/SearchModal.jsx';
 import Chatbot from '@/components/common/Chatbot.jsx';
@@ -41,9 +41,8 @@ const AppContent = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // --- ¡ACÁ ESTÁ LA JUGADA MAESTRA! ---
-  const logoRef = useRef(null); // 1. Creamos una referencia para el logo del navbar.
-  const [logoPosition, setLogoPosition] = useState(null); // 2. Un estado para guardar sus coordenadas.
+  const logoRef = useRef(null);
+  const [logoPosition, setLogoPosition] = useState(null);
 
   const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
@@ -54,11 +53,9 @@ const AppContent = () => {
     checkAuth();
   }, [checkAuth]);
   
-  // 3. Este efecto se encarga de medir la posición del logo y guardarla.
   useEffect(() => {
     const updatePosition = () => {
       if (logoRef.current) {
-        // Usamos requestAnimationFrame para asegurarnos que el navegador ya pintó todo
         requestAnimationFrame(() => {
             if (logoRef.current) {
                  setLogoPosition(logoRef.current.getBoundingClientRect());
@@ -67,12 +64,10 @@ const AppContent = () => {
       }
     };
 
-    // Lo medimos la primera vez y cada vez que cambia el tamaño de la ventana o se scrollea.
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
 
-    // Limpiamos el chiquero cuando el componente se va.
     return () => {
         window.removeEventListener('resize', updatePosition);
         window.removeEventListener('scroll', updatePosition);
@@ -115,7 +110,7 @@ const AppContent = () => {
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
         onOpenSearch={handleOpenSearch}
-        ref={logoRef} // 4. Le pasamos la referencia al Navbar para que se la ponga al logo.
+        ref={logoRef}
       />
       <Suspense fallback={<Spinner message="Cargando página..." />}>
         <Routes>
@@ -132,7 +127,10 @@ const AppContent = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            
+            {/* --- ¡ACÁ ESTÁ LA MAGIA, CAMPEÓN! --- */}
+            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -159,7 +157,7 @@ const AppContent = () => {
       <DropdownMenu 
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
-        logoPosition={logoPosition} // 5. ¡Y acá le pasamos la posición al menú desplegable!
+        logoPosition={logoPosition}
       />
       
       {isCartNotificationOpen && <CartNotificationModal item={addedItem} onClose={handleCloseCartNotification} />}
