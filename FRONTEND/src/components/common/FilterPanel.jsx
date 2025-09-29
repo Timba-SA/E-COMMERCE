@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
-const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
+const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters, categories = [] }) => {
   const [priceRange, setPriceRange] = useState([initialFilters.precio_min, initialFilters.precio_max]);
   const [selectedSizes, setSelectedSizes] = useState(initialFilters.talle || []);
   const [selectedColors, setSelectedColors] = useState(initialFilters.color || []);
+  const [selectedCategory, setSelectedCategory] = useState(initialFilters.categoria_id || '');
   
   const availableColors = ['Black', 'White', 'Grey', 'Brown', 'Beige', 'Blue'];
   const minPrice = 0;
@@ -14,7 +15,8 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
   useEffect(() => {
     setPriceRange([initialFilters.precio_min, initialFilters.precio_max]);
     setSelectedSizes(initialFilters.talle || []);
-    setSelectedColors(initialFilters.color || []); // Ahora recibe una lista vacía por defecto y no se rompe
+    setSelectedColors(initialFilters.color || []);
+    setSelectedCategory(initialFilters.categoria_id || '');
   }, [initialFilters]);
 
   const handlePriceChange = (newRange) => {
@@ -42,11 +44,17 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
       : selectedColors.filter(color => color !== value);
 
     setSelectedColors(newColors);
-    onFilterChange({ color: newColors }); // <-- ¡Le pasamos la lista directamente!
+    onFilterChange({ color: newColors });
   };
 
   const handleSortChange = (e) => {
     onFilterChange({ sort_by: e.target.value });
+  };
+
+  const handleCategoryChange = (e) => {
+    const newCategoryId = e.target.value;
+    setSelectedCategory(newCategoryId);
+    onFilterChange({ categoria_id: newCategoryId });
   };
 
   const formatPrice = (price) => {
@@ -84,6 +92,36 @@ const FilterPanel = ({ isOpen, onClose, onFilterChange, initialFilters }) => {
               <option value="precio_desc">Price (High to Low)</option>
             </select>
           </div>
+        </div>
+
+        <div className="filter-section active">
+            <div className="filter-section-header">
+                <span className="filter-section-title">CATEGORY</span>
+            </div>
+            <div className="filter-section-body">
+                <label className="radio-container">
+                    <input 
+                        type="radio" 
+                        name="category" 
+                        value="" 
+                        checked={!selectedCategory} 
+                        onChange={handleCategoryChange} 
+                    /> All
+                    <span className="radiomark"></span>
+                </label>
+                {categories.map(category => (
+                    <label className="radio-container" key={category.id}>
+                        <input 
+                            type="radio" 
+                            name="category" 
+                            value={category.id} 
+                            checked={selectedCategory === category.id.toString()} 
+                            onChange={handleCategoryChange} 
+                        /> {category.nombre}
+                        <span className="radiomark"></span>
+                    </label>
+                ))}
+            </div>
         </div>
 
         <div className="filter-section active">
