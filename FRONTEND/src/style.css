@@ -1414,72 +1414,20 @@ main {
 }
 /* --- Estilos para la Página del Panel de Admin --- */
 
-.admin-dashboard-container {
-  display: flex;
-  min-height: 100vh; /* Ocupa toda la altura de la pantalla */
+.admin-layout-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    font-family: var(--font-nav);
+    padding: 4rem;
 }
 
-.admin-sidebar {
-  width: 250px; /* Ancho de la barra lateral */
-  background-color: #030324; /* El azul oscuro de tu marca */
-  color: #FFFFFF; /* Texto blanco */
-  padding: 2rem;
-  display: flex;
-  flex-direction: column; /* Para alinear items verticalmente */
-  height: 100vh; /* Ocupa todo el alto */
-  position: sticky; /* Para que se quede fija */
-  top: 0;
-}
-
-.admin-sidebar nav {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem; /* Espacio entre links */
-  flex-grow: 1; /* Empuja el botón de logout hacia abajo */
-}
-
-.admin-nav-link {
-  color: #FFFFFF;
-  text-decoration: none;
-  font-size: 1.1rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
-}
-
-.admin-nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1); /* Un sutil hover */
-}
-
-.admin-nav-link.active {
-  background-color: rgba(255, 255, 255, 0.2);
-  font-weight: 700;
-}
-
-.account-logout-btn {
-  background-color: transparent;
-  border: 1px solid #FFFFFF;
-  color: #FFFFFF;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 600;
-  transition: background-color 0.3s, color 0.3s;
-  margin-top: 2rem; /* Espacio arriba del botón */
-}
-
-.account-logout-btn:hover {
-  background-color: #FFFFFF;
-  color: #030324;
-}
-
-.admin-content {
-  flex-grow: 1; /* Ocupa el resto del espacio */
-  padding: 4rem;
-  background-color: #f4f7fa; /* Un fondo gris claro para el contenido */
+.admin-header {
+    text-align: center;
+    margin-bottom: 4rem;
+    padding: 0 2rem;
 }
 
 .admin-header h1 {
@@ -3440,7 +3388,7 @@ main {
   flex-grow: 1; /* Se asegura de que ocupe todo el alto disponible */
   width: 100%;
   font-family: var(--font-nav);
-  /* background-color: #000000; */ /* Fondo negro para el contenido */
+  background-color: #ffffff; /* Fondo blanco para el contenido */
 }
 
 /* La barra lateral negra de la izquierda */
@@ -3451,11 +3399,6 @@ main {
   padding: 2rem;
   display: flex;
   flex-direction: column; /* Para ordenar los links y el botón de logout */
-  height: 100vh; /* Ocupa toda la altura de la pantalla */
-  position: fixed; /* La dejamos fija */
-  left: 0;
-  top: 0;
-  z-index: 100; /* Nos aseguramos que esté por encima del contenido */
 }
 
 .admin-sidebar nav {
@@ -3504,7 +3447,6 @@ main {
   flex-grow: 1;
   padding: 2rem 3rem;
   overflow-y: auto; /* Si la tabla es muy larga, solo esta parte hace scroll */
-  margin-left: 240px; /* Dejamos espacio para la barra lateral fija */
 }
 
 .admin-content h1 {

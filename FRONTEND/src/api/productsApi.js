@@ -59,12 +59,16 @@ export const createProduct = async (productData) => {
 /**
  * Actualiza un producto existente (función para admins).
  * @param {number} id - El ID del producto a actualizar.
- * @param {object} productData - Los campos del producto a actualizar.
+ * @param {FormData} formData - Los campos del producto a actualizar, incluyendo imágenes.
  * @returns {Promise<any>}
  */
-export const updateProduct = async (id, productData) => {
+export const updateProduct = async (id, formData) => {
   try {
-    const response = await axiosClient.put(`/products/${id}`, productData);
+    const response = await axiosClient.put(`/products/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error(`Error updating product with id ${id}:`, error);

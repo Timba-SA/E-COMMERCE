@@ -16,7 +16,7 @@ const AdminProductFormPage = () => {
         precio: 0,
         sku: '',
         stock: 0,
-        categoria_id: '', // Inicializar vacío para forzar selección
+        categoria_id: '',
         material: '',
         talle: '',
         color: '',
@@ -24,7 +24,8 @@ const AdminProductFormPage = () => {
     
     const [categories, setCategories] = useState([]);
     const [imageFiles, setImageFiles] = useState([]);
-    const [existingImages, setExistingImages] = useState([]);
+    const [visibleImages, setVisibleImages] = useState([]); // --- ESTADO PARA RENDERIZAR
+    const [imagesToDelete, setImagesToDelete] = useState([]);
     const [loading, setLoading] = useState(false);
     const isEditing = Boolean(productId);
 
@@ -48,7 +49,7 @@ const AdminProductFormPage = () => {
                         talle: productToEdit.talle || '',
                         color: productToEdit.color || '',
                     });
-                    setExistingImages(productToEdit.urls_imagenes || []);
+                    setVisibleImages(productToEdit.urls_imagenes || []);
                 }
             } catch (err) {
                 notify(err.message || 'Error loading data', 'error');
@@ -67,25 +68,45 @@ const AdminProductFormPage = () => {
     };
 
     const handleFileChange = (e) => {
-        if (e.target.files.length > 3) {
-            notify('Solo puedes subir hasta 3 imágenes nuevas.', 'error');
+        const files = Array.from(e.target.files);
+        if (visibleImages.length + files.length > 3) {
+            notify('Un producto no puede tener más de 3 imágenes en total.', 'error');
             e.target.value = null;
             return;
         }
-        setImageFiles(Array.from(e.target.files));
+        setImageFiles(files);
+    };
+
+    const handleDeleteExistingImage = (imageUrl) => {
+        setImagesToDelete(prev => [...prev, imageUrl]);
+        setVisibleImages(prev => prev.filter(img => img !== imageUrl));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
+        const formData = new FormData();
+        for (const key in productData) {
+            if (productData[key] !== null && productData[key] !== '') {
+                formData.append(key, productData[key]);
+            }
+        }
+
         try {
             if (isEditing) {
-                await updateProduct(productId, productData);
+                if (imagesToDelete.length > 0) {
+                    formData.append('images_to_delete', imagesToDelete.join(','));
+                }
+                imageFiles.forEach(file => {
+                    formData.append('new_images', file);
+                });
+                await updateProduct(productId, formData);
             } else {
-                const formData = new FormData();
-                for (const key in productData) {
-                    formData.append(key, productData[key]);
+                if (imageFiles.length === 0) {
+                    notify('Debes subir al menos una imagen para crear el producto.', 'error');
+                    setLoading(false);
+                    return;
                 }
                 imageFiles.forEach(file => {
                     formData.append('images', file);
@@ -95,7 +116,8 @@ const AdminProductFormPage = () => {
             notify(`Producto ${isEditing ? 'actualizado' : 'creado'} con éxito!`, 'success');
             navigate('/admin/products');
         } catch (err) {
-            notify(err.detail || 'Ocurrió un error al guardar el producto.', 'error');
+            const errorMessage = err.response?.data?.detail || 'Ocurrió un error al guardar el producto.';
+            notify(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -108,56 +130,61 @@ const AdminProductFormPage = () => {
           <h1>{isEditing ? 'Editar Producto' : 'Añadir Nuevo Producto'}</h1>
           <form onSubmit={handleSubmit} className="admin-form">
             <div className="form-grid">
-              {Object.keys(productData).filter(key => key !== 'categoria_id').map(key => (
+              {Object.keys(productData).map(key => (
                 <div className="form-group" key={key}>
                   <label htmlFor={key}>{key.replace(/_/g, ' ').toUpperCase()}</label>
-                  <input
-                    type={key.includes('precio') || key.includes('stock') || key.includes('id') ? 'number' : 'text'}
-                    id={key}
-                    name={key}
-                    value={productData[key]}
-                    onChange={handleChange}
-                    required
-                  />
+                  {key === 'categoria_id' ? (
+                    <select
+                      id="categoria_id"
+                      name="categoria_id"
+                      value={productData.categoria_id}
+                      onChange={handleChange}
+                      required
+                      style={{ width: '100%', padding: '0.5rem 0', background: 'none', border: 'none', borderBottom: '1px solid #000', fontSize: '1rem' }}
+                    >
+                      <option value="" disabled>-- Seleccione una categoría --</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={['precio', 'stock'].includes(key) ? 'number' : 'text'}
+                      id={key}
+                      name={key}
+                      value={productData[key]}
+                      onChange={handleChange}
+                      required={!['descripcion', 'material', 'talle', 'color'].includes(key)}
+                    />
+                  )}
                 </div>
               ))}
-              
-              <div className="form-group">
-                <label htmlFor="categoria_id">CATEGORÍA</label>
-                <select
-                  id="categoria_id"
-                  name="categoria_id"
-                  value={productData.categoria_id}
-                  onChange={handleChange}
-                  required
-                  style={{
-                      width: '100%',
-                      padding: '0.5rem 0',
-                      background: 'none',
-                      border: 'none',
-                      borderBottom: '1px solid #000',
-                      fontSize: '1rem',
-                  }}
-                >
-                  <option value="" disabled>-- Seleccione una categoría --</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
     
             <div className="form-group" style={{gridColumn: '1 / -1', marginTop: '1rem'}}>
-                <label htmlFor="images">AÑADIR IMÁGENES (hasta 3)</label>
-                <input type="file" id="images" name="images" multiple accept="image/*" onChange={handleFileChange} disabled={isEditing} />
-                {isEditing && <p style={{fontSize: '0.8rem', color: '#888'}}>La edición de imágenes no está soportada en este formulario.</p>}
-                {isEditing && existingImages.length > 0 && (
+                <label htmlFor="images">AÑADIR IMÁGENES (hasta 3 en total)</label>
+                <input type="file" id="images" name="images" multiple accept="image/*" onChange={handleFileChange} />
+                
+                {isEditing && (
                     <div style={{marginTop: '10px'}}>
                         <p>Imágenes actuales:</p>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            {existingImages.map(img => <img key={img} src={img} alt="preview" width="60" style={{border: '1px solid #ddd'}}/>)}
+                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                            {visibleImages.map(img => (
+                                <div key={img} style={{ position: 'relative', border: '1px solid #ddd', padding: '5px' }}>
+                                    <img src={img} alt="preview" width="80" height="80" style={{ objectFit: 'cover' }}/>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleDeleteExistingImage(img)}
+                                        style={{ 
+                                            position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', 
+                                            border: 'none', borderRadius: '50%', width: '20px', height: '20px', 
+                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}
+                                    >
+                                        X
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

@@ -1,23 +1,8 @@
 // En FRONTEND/src/components/admin/ProductManagement.jsx
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axiosClient from '@/hooks/axiosClient'; // Suponiendo que tienes un cliente axios configurado
-
-// --- API Functions ---
-const fetchAdminProducts = async () => {
-  const { data } = await axiosClient.get('/products'); // Asumiendo endpoint público para verlos
-  return data;
-};
-
-const createAdminProduct = async (formData) => {
-  // El header es clave para que FastAPI entienda que es un formulario con archivos
-  const { data } = await axiosClient.post('/admin/products', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return data;
-};
+// Importamos las funciones de la API centralizadas
+import { getProducts, createProduct, deleteProduct } from '@/api/productsApi';
 
 const ProductManagement = () => {
   const queryClient = useQueryClient();
@@ -31,21 +16,36 @@ const ProductManagement = () => {
   });
   const [imageFile, setImageFile] = useState(null);
 
+  // Usamos getProducts para el query
   const { data: products, isLoading } = useQuery({
     queryKey: ['adminProducts'],
-    queryFn: fetchAdminProducts,
+    queryFn: () => getProducts(), // Llamamos a la función importada
   });
 
+  // Mutación para crear productos
   const createProductMutation = useMutation({
-    mutationFn: createAdminProduct,
+    mutationFn: createProduct, // Usamos la función importada
     onSuccess: () => {
-      // Refresca la lista de productos después de crear uno nuevo
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
-      // Limpiar formulario
+      // Aquí podrías limpiar el formulario si quieres
+      alert("¡Producto creado con éxito!");
     },
     onError: (error) => {
       console.error("Error al crear producto:", error);
-      alert("Error: " + error.response?.data?.detail);
+      alert("Error: " + (error.response?.data?.detail || error.message));
+    }
+  });
+
+  // --- ¡NUEVO! Mutación para eliminar productos ---
+  const deleteProductMutation = useMutation({
+    mutationFn: deleteProduct, // Usamos la función importada
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      alert("Producto eliminado con éxito");
+    },
+    onError: (error) => {
+      console.error("Error al eliminar producto:", error);
+      alert("Error: " + (error.response?.data?.detail || error.message));
     }
   });
 
@@ -65,18 +65,22 @@ const ProductManagement = () => {
       return;
     }
 
-    // 1. Creamos un objeto FormData
     const formData = new FormData();
+    formData.append('images', imageFile); // El backend espera 'images'
 
-    // 2. Añadimos el archivo de imagen
-    formData.append('file', imageFile);
-
-    // 3. Añadimos el resto de los datos del producto
+    // Añadimos el resto de los datos del producto
     for (const key in productData) {
       formData.append(key, productData[key]);
     }
 
     createProductMutation.mutate(formData);
+  };
+
+  // --- ¡NUEVO! Handler para el borrado ---
+  const handleDelete = (productId) => {
+    if (window.confirm("¿Estás seguro de que quieres eliminar este producto?")) {
+      deleteProductMutation.mutate(productId);
+    }
   };
 
   return (
@@ -86,7 +90,6 @@ const ProductManagement = () => {
       {/* Formulario de Creación */}
       <form onSubmit={handleSubmit} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '2rem' }}>
         <h3>Crear Nuevo Producto</h3>
-        {/* ... inputs para nombre, descripcion, precio, etc. ... */}
         <input type="text" name="nombre" placeholder="Nombre" onChange={handleInputChange} required />
         <input type="text" name="sku" placeholder="SKU" onChange={handleInputChange} required />
         <input type="number" name="precio" placeholder="Precio" onChange={handleInputChange} required />
@@ -106,11 +109,37 @@ const ProductManagement = () => {
       {/* Lista de Productos */}
       <h3>Productos Existentes</h3>
       {isLoading ? <p>Cargando productos...</p> : (
-        <ul>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
           {products?.map(p => (
-            <li key={p.id}>
-              <img src={p.urls_imagenes} alt={p.nombre} width="50" />
-              {p.nombre} ({p.sku})
+            <li 
+              key={p.id} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                padding: '0.5rem', 
+                borderBottom: '1px solid #eee' 
+              }}
+            >
+              <div>
+                <img src={p.urls_imagenes?.[0]} alt={p.nombre} width="50" style={{ marginRight: '1rem', verticalAlign: 'middle' }} />
+                <span style={{ fontWeight: 'bold' }}>{p.nombre}</span> ({p.sku})
+              </div>
+              {/* --- ¡NUEVO! Botón de eliminar --- */}
+              <button 
+                onClick={() => handleDelete(p.id)} 
+                disabled={deleteProductMutation.isPending}
+                style={{
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.3rem 0.6rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Eliminar
+              </button>
             </li>
           ))}
         </ul>

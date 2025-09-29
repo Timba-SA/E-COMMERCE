@@ -156,21 +156,65 @@ async def create_product(
 @router.put("/{product_id}", response_model=product_schemas.Product, summary="Actualizar un producto (Solo Admins)")
 async def update_product(
     product_id: int, 
-    product_in: product_schemas.ProductUpdate, 
     db: AsyncSession = Depends(get_db), 
-    current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user)
+    current_admin: user_schemas.UserOut = Depends(auth_services.get_current_admin_user),
+    # Campos del formulario
+    nombre: Optional[str] = Form(None),
+    descripcion: Optional[str] = Form(None),
+    precio: Optional[float] = Form(None),
+    sku: Optional[str] = Form(None),
+    stock: Optional[int] = Form(None),
+    categoria_id: Optional[int] = Form(None),
+    material: Optional[str] = Form(None),
+    talle: Optional[str] = Form(None),
+    color: Optional[str] = Form(None),
+    # Gestión de imágenes
+    images_to_delete: Optional[str] = Form(None), # URLs separadas por comas
+    new_images: Optional[List[UploadFile]] = File(None)
 ):
-    product_db = await db.get(Producto, product_id)
+    product_db = await db.get(Producto, product_id, options=[joinedload(Producto.variantes)])
     if not product_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
-    
-    update_data = product_in.model_dump(exclude_unset=True)
+
+    # 1. Actualizar campos de texto
+    update_data = {
+        "nombre": nombre,
+        "descripcion": descripcion,
+        "precio": precio,
+        "sku": sku,
+        "stock": stock,
+        "categoria_id": categoria_id,
+        "material": material,
+        "talle": talle,
+        "color": color
+    }
     for key, value in update_data.items():
-        setattr(product_db, key, value)
-    
+        if value is not None:
+            setattr(product_db, key, value)
+
+    # 2. Gestionar imágenes
+    current_image_urls = product_db.urls_imagenes or []
+
+    # 2a. Eliminar imágenes marcadas
+    if images_to_delete:
+        urls_to_delete = [url.strip() for url in images_to_delete.split(',')]
+        await cloudinary_service.delete_images(urls_to_delete)
+        current_image_urls = [url for url in current_image_urls if url not in urls_to_delete]
+
+    # 2b. Subir nuevas imágenes
+    if new_images and new_images[0].filename:
+        if len(current_image_urls) + len(new_images) > 3:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Un producto no puede tener más de 3 imágenes en total.")
+        
+        new_image_urls = await cloudinary_service.upload_images(new_images)
+        current_image_urls.extend(new_image_urls)
+
+    product_db.urls_imagenes = current_image_urls
+
+    # 3. Guardar en la base de datos
     db.add(product_db)
     await db.commit()
-    await db.refresh(product_db) # Hacemos refresh sobre el objeto que ya tenemos
+    await db.refresh(product_db)
     
     return product_db
 

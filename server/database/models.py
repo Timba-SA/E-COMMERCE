@@ -39,13 +39,13 @@ class Producto(Base):
     creado_en = Column(TIMESTAMP, server_default=func.now())
     actualizado_en = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     categoria = relationship("Categoria", back_populates="productos")
-    variantes = relationship("VarianteProducto", back_populates="producto")
+    variantes = relationship("VarianteProducto", back_populates="producto", cascade="all, delete-orphan")
 
 
 class VarianteProducto(Base):
     __tablename__ = "variantes_productos"
     id = Column(Integer, primary_key=True, index=True)
-    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), nullable=False)
     tamanio = Column(String(10), nullable=False)
     color = Column(String(50), nullable=False)
     cantidad_en_stock = Column(Integer, nullable=False)

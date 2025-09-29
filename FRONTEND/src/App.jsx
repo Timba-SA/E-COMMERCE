@@ -44,11 +44,11 @@ const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage.jsx'));
 
 const AppContent = () => {
   const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
   const logoRef = useRef(null);
   const [logoPosition, setLogoPosition] = useState(null);
-
   const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -57,27 +57,26 @@ const AppContent = () => {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-  
+
   useEffect(() => {
+    if (isAdminRoute) return;
     const updatePosition = () => {
       if (logoRef.current) {
         requestAnimationFrame(() => {
-            if (logoRef.current) {
-                 setLogoPosition(logoRef.current.getBoundingClientRect());
-            }
+          if (logoRef.current) {
+            setLogoPosition(logoRef.current.getBoundingClientRect());
+          }
         });
       }
     };
-
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
-
     return () => {
-        window.removeEventListener('resize', updatePosition);
-        window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
     };
-  }, []); 
+  }, [isAdminRoute]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const handleSetAddedItem = (item) => setAddedItem(item);
@@ -102,8 +101,9 @@ const AppContent = () => {
   }, [location]);
 
   useEffect(() => {
+    if (isAdminRoute) return;
     document.body.classList.toggle('menu-open', isMenuOpen || isCartNotificationOpen || isSearchOpen);
-  }, [isMenuOpen, isCartNotificationOpen, isSearchOpen]);
+  }, [isAdminRoute, isMenuOpen, isCartNotificationOpen, isSearchOpen]);
 
   if (isAuthLoading) {
     return <Spinner message="Verificando sesión..." />;
@@ -132,7 +132,7 @@ const AppContent = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -143,8 +143,7 @@ const AppContent = () => {
             <Route path="/payment/failure" element={<PaymentFailurePage />} />
             <Route path="/payment/pending" element={<PaymentPendingPage />} />
 
-            {/* --- RUTA DE ADMIN CORREGIDA --- */}
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin/*" element={<AdminLayout />}>
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="products" element={<AdminProductsPage />} />
                 <Route path="products/new" element={<AdminProductFormPage />} />
@@ -156,17 +155,21 @@ const AppContent = () => {
             </Route>
         </Routes>
       </Suspense>
-      <Footer />
       
-      <DropdownMenu 
-        isOpen={isMenuOpen} 
-        onClose={() => setIsMenuOpen(false)} 
-        logoPosition={logoPosition}
-      />
+      {!isAdminRoute && (
+        <>
+            <Footer />
+            <DropdownMenu 
+                isOpen={isMenuOpen} 
+                onClose={() => setIsMenuOpen(false)} 
+                logoPosition={logoPosition}
+            />
+            <SearchModal isOpen={isSearchOpen} onClose={handleCloseSearch} />
+            <Chatbot />
+        </>
+      )}
       
       {isCartNotificationOpen && <CartNotificationModal item={addedItem} onClose={handleCloseCartNotification} />}
-      <SearchModal isOpen={isSearchOpen} onClose={handleCloseSearch} />
-      <Chatbot />
     </div>
   );
 };
