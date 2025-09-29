@@ -55,3 +55,16 @@ export const getGuestSessionAPI = async () => {
     throw error.response?.data || error;
   }
 };
+
+export const mergeCartAPI = async (guestSessionId) => {
+  try {
+    const response = await axiosClient.post('/auth/merge-cart', {
+      guest_session_id: guestSessionId,
+    });
+    console.log('Cart merged successfully', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error merging cart:', error.response?.data?.detail || error.message);
+    // No se relanza el error para no bloquear el flujo de login.
+  }
+};

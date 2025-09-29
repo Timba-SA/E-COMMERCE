@@ -17,9 +17,14 @@ class CartItem(BaseModel):
     size: Optional[str] = None # <-- ¡AGREGAMOS ESTA LÍNEA!
 
 # Molde para el objeto principal del carrito
+# En backend/schemas/cart_schemas.py
+
+# ... (el resto del archivo igual)
+
+# Molde para el objeto principal del carrito
 class Cart(BaseModel):
     id: Optional[PyObjectId] = Field(None, alias="_id")
-    user_id: Optional[str] = None
+    user_id: Optional[PyObjectId] = None # <-- ¡ACÁ ESTÁ LA JUGADA!
     guest_session_id: Optional[str] = None
     items: List[CartItem] = []
     last_updated: datetime = Field(default_factory=datetime.now)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductById, createProductAPI, updateProductAPI, getCategoriesAPI } from '../api/productsApi';
+import { getProductById, createProduct, updateProduct } from '../api/productsApi';
+import { getCategories } from '../api/categoriesApi';
 import { NotificationContext } from '../context/NotificationContext';
 import Spinner from '../components/common/Spinner';
 
@@ -31,7 +32,7 @@ const AdminProductFormPage = () => {
         const fetchInitialData = async () => {
             setLoading(true);
             try {
-                const categoriesData = await getCategoriesAPI();
+                const categoriesData = await getCategories();
                 setCategories(categoriesData);
 
                 if (isEditing) {
@@ -80,7 +81,7 @@ const AdminProductFormPage = () => {
 
         try {
             if (isEditing) {
-                await updateProductAPI(productId, productData);
+                await updateProduct(productId, productData);
             } else {
                 const formData = new FormData();
                 for (const key in productData) {
@@ -89,7 +90,7 @@ const AdminProductFormPage = () => {
                 imageFiles.forEach(file => {
                     formData.append('images', file);
                 });
-                await createProductAPI(formData);
+                await createProduct(formData);
             }
             notify(`Producto ${isEditing ? 'actualizado' : 'creado'} con éxito!`, 'success');
             navigate('/admin/products');

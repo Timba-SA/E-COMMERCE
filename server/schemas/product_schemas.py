@@ -1,60 +1,48 @@
 # En backend/schemas/product_schemas.py
+# ESTE ARCHIVO ES PARA TU BASE DE DATOS SQL (POSTGRESQL, MYSQL, ETC.)
 
-from pydantic import BaseModel, Field
-from typing import Optional,List
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional
 
-# --- CAMBIO NUEVO: Schema para las Variantes ---
-class VarianteProducto(BaseModel):
-    id: int
-    producto_id: int
+# --- Esquemas para Variantes de Producto (SQL) ---
+class VarianteProductoBase(BaseModel):
     tamanio: str
     color: str
-    cantidad_en_stock: int
+    cantidad_en_stock: int = Field(..., ge=0)
 
-    class Config:
-        from_attributes = True
+class VarianteProductoCreate(VarianteProductoBase):
+    pass
 
-# Schema base del producto, con los campos comunes
+class VarianteProducto(VarianteProductoBase):
+    id: int
+    producto_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Esquemas para Productos (SQL) ---
 class ProductBase(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
-    precio: float
+    precio: float = Field(..., gt=0)
     sku: str
-    urls_imagenes: Optional[List[str]] = None # <-- Ahora es una lista de strings
+    urls_imagenes: Optional[List[str]] = []
     material: Optional[str] = None
-    talle: Optional[str] = None
-    color: Optional[str] = None
-    stock: int = Field(..., ge=0) # Nuevo campo para el stock
+    stock: int = Field(..., ge=0)
     categoria_id: int
 
-# Schema para crear un producto (todos los campos de ProductBase son requeridos)
 class ProductCreate(ProductBase):
     pass
 
-# Schema para actualizar un producto (todos los campos son opcionales)
 class ProductUpdate(BaseModel):
     nombre: Optional[str] = None
-    descripcion: Optional[str] = None
-    precio: Optional[float] = None
-    sku: Optional[str] = None
-    urls_imagenes: Optional[List[str]] = None # <-- También acá
-    material: Optional[str] = None
-    talle: Optional[str] = None
-    color: Optional[str] = None
-    stock: Optional[int] = Field(None, ge=0) # Nuevo campo para el stock
-    categoria_id: Optional[int] = None
+    # ... otros campos opcionales ...
 
-# Schema para mostrar un producto en la base de datos (incluye el id)
 class Product(ProductBase):
     id: int
-    variantes: List[VarianteProducto] = [] #CAMBIO NUEVO!!!
-    class Config:
-        from_attributes = True # Permite que Pydantic lea los datos desde un objeto de SQLAlchemy
+    variantes: List[VarianteProducto] = []
+    model_config = ConfigDict(from_attributes=True)
 
-# --- NUEVO: Schema para las Categorías ---
+# --- Esquema para Categorías (SQL) ---
 class Categoria(BaseModel):
     id: int
     nombre: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

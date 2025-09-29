@@ -1,65 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getCategories } from '../../api/categoriesApi'; // Asegurate que esta ruta esté bien
+
+// Nuestra única fuente de verdad para las categorías de hombre.
+const MENSWEAR_CATEGORIES = ['hoodies', 'jackets', 'shirts', 'pants'];
 
 const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const currentCategory = location.pathname.split('/')[2] || '';
+  const currentSubCategory = location.pathname.split('/')[2] || '';
+
   const [activeCategory, setActiveCategory] = useState('menswear');
+  const [categories, setCategories] = useState({ womenswear: [], menswear: [] });
 
   useEffect(() => {
-    if (isOpen) {
-      const pathSegments = location.pathname.split('/');
-      const category = pathSegments[1];
-      const subCategory = pathSegments[2];
+    const fetchAndOrganizeCategories = async () => {
+      try {
+        const allCategories = await getCategories();
 
-      if (category === 'catalog') {
-        if (['dresses', 'tops', 'skirts', 'jeans', 'womenswear'].includes(subCategory)) {
-          setActiveCategory('womenswear');
-        } else if (['hoodies', 'jackets', 'shirts', 'pants', 'menswear'].includes(subCategory)) {
-          setActiveCategory('menswear');
+        // =======================================================================
+        // ACÁ ESTÁ LA CLAVE DE TODO, JUANI. ¡PRESTÁ ATENCIÓN A ESTA LÍNEA!
+        console.log('LO QUE LLEGA DE LA API ES ESTO:', allCategories);
+        // =======================================================================
+
+        // El código de abajo ASUME que `allCategories` es un array de objetos,
+        // y que cada objeto tiene una propiedad llamada "nombre".
+        // Si no es así, acá es donde todo falla.
+
+        if (!Array.isArray(allCategories)) {
+          console.error("Error: getCategories no devolvió un array. Se recibió:", allCategories);
+          return; // Cortamos la ejecución si no es un array para evitar que rompa.
         }
-      } else {
-        setActiveCategory('menswear');
+
+        const menswear = allCategories.filter(c => MENSWEAR_CATEGORIES.includes(c.nombre.toLowerCase()));
+        const womenswear = allCategories.filter(c => !MENSWEAR_CATEGORIES.includes(c.nombre.toLowerCase()));
+
+        const formattedCategories = {
+          womenswear: womenswear.map(c => ({ name: c.nombre.toUpperCase(), path: `/catalog/${c.nombre.toLowerCase()}` })),
+          menswear: menswear.map(c => ({ name: c.nombre.toUpperCase(), path: `/catalog/${c.nombre.toLowerCase()}` }))
+        };
+
+        setCategories(formattedCategories);
+
+        const pathSubCategory = location.pathname.split('/')[2];
+        if (pathSubCategory) {
+            const isMenswear = formattedCategories.menswear.some(c => c.path.includes(pathSubCategory));
+            setActiveCategory(isMenswear ? 'menswear' : 'womenswear');
+        } else {
+            setActiveCategory('menswear');
+        }
+
+      } catch (error) {
+        console.error("Explotó la llamada a la API o el procesamiento de categorías:", error);
       }
+    };
+
+    if (isOpen) {
+        fetchAndOrganizeCategories();
     }
   }, [isOpen, location.pathname]);
 
-  // 1. Función para navegar a una ruta y cerrar el menú (usada por los links finales)
   const handleNavigateAndClose = (path) => {
     navigate(path);
     onClose();
   };
 
-  // 2. Función para manejar el click en las categorías principales (el toggle)
-  const handleMainCategoryClick = (category, path) => {
+  const handleMainCategoryClick = (category) => {
     if (activeCategory === category) {
-      // Si ya está activo: Navega a la ruta principal del catálogo y cierra.
-      handleNavigateAndClose(path);
+      handleNavigateAndClose(`/catalog/${category}`);
     } else {
-      // Si no está activo: Solo cambia la categoría para mostrar el submenú.
       setActiveCategory(category);
     }
-  };
-
-  // 3. Función para cerrar el menú cuando se hace click en el logo o en un sub-link
-  const handleLinkClick = () => {
-    onClose();
-  };
-
-  const categories = {
-    womenswear: [
-      { name: 'DRESSES', path: '/catalog/dresses' },
-      { name: 'TOPS', path: '/catalog/tops' },
-      { name: 'SKIRTS', path: '/catalog/skirts' },
-      { name: 'JEANS', path: '/catalog/jeans' },
-    ],
-    menswear: [
-      { name: 'HOODIES', path: '/catalog/hoodies' },
-      { name: 'JACKETS', path: '/catalog/jackets' },
-      { name: 'SHIRTS', path: '/catalog/shirts' },
-      { name: 'PANTS', path: '/catalog/pants' },
-    ],
   };
 
   const phantomLogoStyle = logoPosition
@@ -98,7 +109,7 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
             <span></span>
           </button>
           
-          <Link to="/" className="logo dropdown-logo" onClick={handleLinkClick} style={{ visibility: 'hidden' }}>
+          <Link to="/" className="logo dropdown-logo" onClick={onClose} style={{ visibility: 'hidden' }}>
               VOID
           </Link>
         </div>
@@ -109,7 +120,7 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
               <ul>
                 <li>
                   <div 
-                    onClick={() => handleMainCategoryClick('womenswear', '/catalog/womenswear')} 
+                    onClick={() => handleMainCategoryClick('womenswear')} 
                     className={`category-link ${activeCategory === 'womenswear' ? 'active-category' : ''}`}
                   >
                     WOMENSWEAR
@@ -117,7 +128,7 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
                 </li>
                 <li>
                   <div 
-                    onClick={() => handleMainCategoryClick('menswear', '/catalog/menswear')} 
+                    onClick={() => handleMainCategoryClick('menswear')} 
                     className={`category-link ${activeCategory === 'menswear' ? 'active-category' : ''}`}
                   >
                     MENSWEAR
@@ -126,32 +137,31 @@ const DropdownMenu = ({ isOpen, onClose, logoPosition }) => {
               </ul>
             </nav>
             <nav className="dropdown-nav-right">
-              <ul className="submenu active-submenu">
-                
-                {/* Agregamos el link para ver todos los productos de la categoría activa */}
-                <li key={`all-${activeCategory}`}>
-                    <Link
-                        to={`/catalog/${activeCategory}`}
-                        onClick={() => handleNavigateAndClose(`/catalog/${activeCategory}`)} 
-                        className="view-all-link"
-                    >
-                        VIEW ALL {activeCategory.toUpperCase()}
-                    </Link>
-                </li>
-                
-                {/* Mapeamos las subcategorías */}
-                {categories[activeCategory] && categories[activeCategory].map(subcategory => (
-                  <li key={subcategory.name}>
-                    <Link 
-                      to={subcategory.path} 
-                      onClick={handleLinkClick} 
-                      className={currentCategory === subcategory.path.split('/')[2] ? 'active-category' : ''}
-                    >
-                      {subcategory.name}
-                    </Link>
+              {categories[activeCategory] && categories[activeCategory].length > 0 && (
+                <ul className="submenu active-submenu">
+                  <li key={`all-${activeCategory}`}>
+                      <Link
+                          to={`/catalog/${activeCategory}`}
+                          onClick={() => handleNavigateAndClose(`/catalog/${activeCategory}`)} 
+                          className="view-all-link"
+                      >
+                          VIEW ALL {activeCategory.toUpperCase()}
+                      </Link>
                   </li>
-                ))}
-              </ul>
+                  
+                  {categories[activeCategory].map(subcategory => (
+                    <li key={subcategory.name}>
+                      <Link 
+                        to={subcategory.path} 
+                        onClick={onClose} 
+                        className={currentSubCategory === subcategory.path.split('/')[2] ? 'active-link' : ''}
+                      >
+                        {subcategory.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </nav>
           </div>
           <div className="dropdown-footer">

@@ -1,13 +1,23 @@
 // En FRONTEND/src/pages/CartPage.jsx
 
 import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import Spinner from '../components/common/Spinner';
 
 const CartPage = () => {
     const navigate = useNavigate();
     const { cart, loading, removeItemFromCart } = useContext(CartContext);
+    const { isAuthenticated } = useAuthStore();
+
+    const handleCheckout = () => {
+        if (isAuthenticated) {
+            navigate('/checkout');
+        } else {
+            navigate('/login', { state: { from: '/checkout' } });
+        }
+    };
 
     const formatPrice = (price) => {
         return new Intl.NumberFormat('es-AR', {
@@ -83,8 +93,7 @@ const CartPage = () => {
                                 <span>{formatPrice(orderTotal)} ARS</span>
                             </div>
                             <div className="checkout-button-container">
-                                {/* --- ¡BOTÓN CORREGIDO! --- */}
-                                <Link to="/checkout" className="checkout-button">CHECKOUT</Link>
+                                <button onClick={handleCheckout} className="checkout-button">CHECKOUT</button>
                             </div>
                         </div>
                     </>
