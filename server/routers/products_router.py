@@ -1,7 +1,7 @@
 # En backend/routers/products_router.py
 
 from fastapi import (
-    APIRouter, Depends, HTTPException, Query, status,
+    APIRouter, Depends, HTTPException, Query, status, 
     File, UploadFile, Form
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,16 +22,19 @@ router = APIRouter(
 
 @router.get("/", response_model=List[product_schemas.Product])
 async def get_products(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db), 
     q: Optional[str] = Query(None, description="Término de búsqueda general para nombre y descripción"),
-    material: Optional[str] = Query(None),
+    material: Optional[str] = Query(None), 
     precio_min: Optional[float] = Query(None),
     precio_max: Optional[float] = Query(None),
-    categoria_id: Optional[List[int]] = Query(None),
-    talle: Optional[str] = Query(None),
-    color: Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(12, ge=1, le=100),
+    # ===================== CAMBIO 1: ACÁ ESTÁ LA MAGIA =====================
+    # Le decimos que categoria_id puede ser una LISTA de enteros (List[int])
+    categoria_id: Optional[List[int]] = Query(None), 
+    # ======================================================================
+    talle: Optional[str] = Query(None), 
+    color: Optional[str] = Query(None), 
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(12, ge=1, le=100), # Cambiado a 12 para que coincida con el frontend
     sort_by: Optional[str] = Query(None)
 ):
     query = select(Producto).options(joinedload(Producto.variantes))
@@ -44,16 +47,19 @@ async def get_products(
     if precio_min is not None: query = query.where(Producto.precio >= precio_min)
     if precio_max is not None: query = query.where(Producto.precio <= precio_max)
     
+    # ===================== CAMBIO 2: Y ACÁ LA APLICAMOS =====================
+    # Usamos '.in_' para que SQLAlchemy busque productos cuya categoría esté EN LA LISTA de IDs
     if categoria_id: query = query.where(Producto.categoria_id.in_(categoria_id))
+    # =======================================================================
     
-    if talle:
+    if talle: 
         talles = [t.strip() for t in talle.split(',')]
         query = query.join(Producto.variantes).filter(VarianteProducto.tamanio.in_(talles))
 
     if color:
         colors = [c.strip() for c in color.split(',')]
         if not talle: # Evita hacer el join dos veces si ya se hizo por talle
-            query = query.join(Producto.variantes)
+              query = query.join(Producto.variantes)
         query = query.filter(VarianteProducto.color.in_(colors))
 
     if sort_by:
@@ -67,22 +73,70 @@ async def get_products(
     products = result.scalars().unique().all()
     return products
 
-# --- ¡¡ACÁ ESTÁ LA RUTA QUE FALTABA Y QUE ARREGLA EL 405!! ---
-@router.get("/{product_id}", response_model=product_schemas.Product)
-async def get_product_by_id(product_id: int, db: AsyncSession = Depends(get_db)):
-    query = select(Producto).options(joinedload(Producto.variantes)).where(Producto.id == product_id)
-    result = await db.execute(query)
-    product = result.scalars().unique().first()
+# ... (el resto de tus endpoints quedan exactamente igual, no hace falta tocarlos) ...
 
-    if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+@router.get("/", response_model=List[product_schemas.Product])
+async def get_products(
+    db: AsyncSession = Depends(get_db), 
+    q: Optional[str] = Query(None),
+    material: Optional[str] = Query(None), 
+    precio_min: Optional[float] = Query(None),
+    precio_max: Optional[float] = Query(None),
+    # ===================== ARREGLO A LO RAMBO =====================
+    # 1. Recibimos la categoría como un simple string de texto (str)
+    categoria_id: Optional[str] = Query(None), 
+    # ==============================================================
+    talle: Optional[str] = Query(None), 
+    color: Optional[str] = Query(None), 
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(12, ge=1, le=100),
+    sort_by: Optional[str] = Query(None)
+):
+    query = select(Producto).options(joinedload(Producto.variantes))
+
+    # ... (los otros filtros de q, material, precio, etc. quedan igual) ...
+    if q: query = query.filter(Producto.nombre.ilike(f"%{q}%"))
+    if material: query = query.where(Producto.material.ilike(f"%{material}%"))
+    if precio_min is not None: query = query.where(Producto.precio >= precio_min)
+    if precio_max is not None: query = query.where(Producto.precio <= precio_max)
     
-    return product
-# --- FIN DE LA RUTA AGREGADA ---
+    # ===================== ARREGLO A LO RAMBO =====================
+    # 2. Si recibimos el string, lo convertimos a mano en una lista de números
+    if categoria_id:
+        try:
+            # Partimos el string por las comas y convertimos cada pedazo a int
+            id_list = [int(i.strip()) for i in categoria_id.split(',')]
+            query = query.where(Producto.categoria_id.in_(id_list))
+        except ValueError:
+            # Si la conversión falla, tiramos un error claro
+            raise HTTPException(status_code=400, detail="El formato de categoria_id es inválido.")
+    # ===============================================================
+    
+    # ... (el resto de los filtros de talle, color, etc. quedan igual) ...
+    if talle: 
+        talles = [t.strip() for t in talle.split(',')]
+        query = query.join(Producto.variantes).filter(VarianteProducto.tamanio.in_(talles))
+
+    if color:
+        colors = [c.strip() for c in color.split(',')]
+        if not talle:
+              query = query.join(Producto.variantes)
+        query = query.filter(VarianteProducto.color.in_(colors))
+
+    if sort_by:
+        if sort_by == "precio_asc": query = query.order_by(Producto.precio.asc())
+        elif sort_by == "precio_desc": query = query.order_by(Producto.precio.desc())
+        elif sort_by == "nombre_asc": query = query.order_by(Producto.nombre.asc())
+        elif sort_by == "nombre_desc": query = query.order_by(Producto.nombre.desc())
+        
+    query = query.offset(skip).limit(limit)
+    result = await db.execute(query)
+    products = result.scalars().unique().all()
+    return products
 
 @router.post(
-    "/{product_id}/variants",
-    response_model=product_schemas.VarianteProducto,
+    "/{product_id}/variants", 
+    response_model=product_schemas.VarianteProducto, 
     status_code=status.HTTP_201_CREATED,
     summary="Añadir una nueva variante a un producto (Solo Admins)"
 )
