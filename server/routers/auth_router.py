@@ -17,6 +17,8 @@ router = APIRouter(
     tags=["Auth"]
 )
 
+# En backend/routers/auth_router.py
+
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=user_schemas.UserOut)
 async def register_user(user: user_schemas.UserCreate, db: Database = Depends(get_db_nosql)):
     existing_user = await db.users.find_one({"email": user.email})
@@ -26,6 +28,15 @@ async def register_user(user: user_schemas.UserCreate, db: Database = Depends(ge
             detail="El email ya está registrado."
         )
 
+    # --- ¡ACÁ METEMOS LA VALIDACIÓN! ---
+    if len(user.password) > 72:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña es demasiado larga. El máximo es 72 caracteres."
+        )
+    # ------------------------------------
+
+    # Si pasa el control, recién ahí la hasheamos
     hashed_password = security.get_password_hash(user.password)
     
     user_document = user.model_dump()
