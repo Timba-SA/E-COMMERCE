@@ -1,7 +1,6 @@
 # En backend/schemas/user_schemas.py
 
-# Asegurate de que estos imports estén al principio del archivo
-from pydantic import BaseModel, EmailStr, Field, BeforeValidator, ConfigDict # <-- Importar ConfigDict
+from pydantic import BaseModel, EmailStr, Field, BeforeValidator, ConfigDict
 from typing import Optional
 from typing_extensions import Annotated
 from bson import ObjectId
@@ -28,11 +27,9 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: PyObjectId = Field(alias="_id")
 
-    # --- FIX ---
-    # Reemplazamos 'class Config:' por 'model_config' usando ConfigDict
     model_config = ConfigDict(
         populate_by_name = True,
-        arbitrary_types_allowed = True # Mantenlo por si PyObjectId lo necesita
+        arbitrary_types_allowed = True
     )
 
 # --- El resto de tus modelos (sin cambios) ---
@@ -43,10 +40,10 @@ class Token(BaseModel):
 class UserUpdateRole(BaseModel):
     role: str
 
-# --- ¡AGREGADO PARA FORGOT PASSWORD! ---
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
+# --- ¡ACÁ ESTÁ EL AJUSTE! ---
+# Sacamos el token de acá porque ya no viaja en el cuerpo del mensaje.
 class ResetPasswordRequest(BaseModel):
-    token: str
     new_password: str
