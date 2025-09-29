@@ -670,7 +670,7 @@ main {
 }
 
 .catalog-product-image-container {
-  background-color: #f8f8f8;
+  background-color: #FFFFFF;
   margin-bottom: 1rem;
   aspect-ratio: 3 / 4;
   display: flex;
@@ -1661,7 +1661,7 @@ main {
 .item-image {
     width: 100px;
     height: 120px;
-    background-color: #f8f8f8;
+    background-color: #FFFFFF;
     flex-shrink: 0;
 }
 
@@ -1955,7 +1955,7 @@ main {
 .cart-notification-image {
     width: 100px;
     height: 120px;
-    background-color: #f8f8f8;
+    background-color: #FFFFFF;
 }
 
 .cart-notification-image img {
