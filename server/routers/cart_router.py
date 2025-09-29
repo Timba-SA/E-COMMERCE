@@ -27,6 +27,14 @@ def get_session_identifier(current_user: Optional[dict], guest_id: Optional[str]
     
     raise HTTPException(status_code=400, detail="Se requiere sesión de usuario o de invitado.")
 
+# --- Helper para convertir ObjectId a str antes de devolver ---
+def serialize_cart(cart: dict) -> dict:
+    if cart and cart.get("user_id"):
+        cart["user_id"] = str(cart["user_id"])
+    # El _id es manejado por el alias en Pydantic, no necesita conversión manual aquí
+    # si se usa PyObjectId.
+    return cart
+
 # --- Endpoint para que el frontend pida un ID de invitado ---
 @router.get("/session/guest", summary="Generar un ID de sesión para invitados")
 def get_guest_session():
@@ -45,12 +53,13 @@ async def get_cart(
     
     if not cart:
         new_cart_data = identifier.copy()
+        # Si el identificador es user_id, es un ObjectId, hay que convertirlo
+        if "user_id" in new_cart_data:
+            new_cart_data["user_id"] = str(new_cart_data["user_id"])
         new_cart_data.update({"items": [], "last_updated": datetime.now()})
         return cart_schemas.Cart(**new_cart_data)
         
-    # --- FIX ---
-    # Si encontramos el 'cart', devolvemos 'cart', no 'new_cart_data'.
-    return cart_schemas.Cart(**cart)
+    return cart_schemas.Cart(**serialize_cart(cart))
 
 @router.post("/items", response_model=cart_schemas.Cart, summary="Añadir un item al carrito")
 async def add_item_to_cart(
@@ -61,7 +70,6 @@ async def add_item_to_cart(
 ):
     identifier = get_session_identifier(current_user, guest_session_id)
     
-    # (Fix de 'variante_id' ya aplicado)
     result = await db.carts.update_one(
         {**identifier, "items.variante_id": item.variante_id},
         {"$inc": {"items.$.quantity": item.quantity}}
@@ -80,9 +88,8 @@ async def add_item_to_cart(
     updated_cart = await db.carts.find_one(identifier)
     if not updated_cart:
          raise HTTPException(status_code=404, detail="No se pudo encontrar o crear el carrito.")
-    return cart_schemas.Cart(**updated_cart)
+    return cart_schemas.Cart(**serialize_cart(updated_cart))
 
-# (Fix de 'variante_id' ya aplicado)
 @router.delete("/items/{variante_id}", response_model=cart_schemas.Cart, summary="Eliminar un item del carrito")
 async def remove_item_from_cart(
     variante_id: int, 
@@ -105,7 +112,9 @@ async def remove_item_from_cart(
     updated_cart = await db.carts.find_one(identifier)
     if not updated_cart:
         new_cart_data = identifier.copy()
+        if "user_id" in new_cart_data:
+            new_cart_data["user_id"] = str(new_cart_data["user_id"])
         new_cart_data.update({"items": [], "last_updated": datetime.now()})
         return cart_schemas.Cart(**new_cart_data)
 
-    return cart_schemas.Cart(**updated_cart)
+    return cart_schemas.Cart(**serialize_cart(updated_cart))
