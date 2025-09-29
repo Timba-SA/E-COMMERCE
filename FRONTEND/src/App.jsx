@@ -1,3 +1,5 @@
+// timba-sa/e-commerce/E-COMMERCE-50c1d7d8a49ac0891dda9940c53fddb57630ff63/FRONTEND/src/App.jsx
+
 import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,10 +11,9 @@ import ProtectedRoute from '@/components/common/ProtectedRoute.jsx';
 import CartNotificationModal from '@/components/products/CartNotificationModal.jsx';
 import SearchModal from '@/components/common/SearchModal.jsx';
 import Chatbot from '@/components/common/Chatbot.jsx';
-import AdminLayout from '@/pages/AdminLayout.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
 
-// --- Tus Páginas ---
+// --- Páginas (lazy-loaded para mejor performance) ---
 const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
@@ -23,13 +24,6 @@ const SearchResultsPage = lazy(() => import('@/pages/SearchResultsPage.jsx'));
 const PaymentSuccessPage = lazy(() => import('@/pages/PaymentSuccessPage.jsx'));
 const PaymentFailurePage = lazy(() => import('@/pages/PaymentFailurePage.jsx'));
 const PaymentPendingPage = lazy(() => import('@/pages/PaymentPendingPage.jsx'));
-const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage.jsx'));
-const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage.jsx'));
-const AdminProductFormPage = lazy(() => import('@/pages/AdminProductFormPage.jsx'));
-const AdminProductVariantsPage = lazy(() => import('@/pages/AdminProductVariantsPage.jsx'));
-const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage.jsx'));
-const AdminOrderDetailPage = lazy(() => import('@/pages/AdminOrderDetailPage.jsx'));
-const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage.jsx'));
 const AboutPage = lazy(() => import('@/pages/AboutPage.jsx'));
 const AccountPage = lazy(() => import('@/pages/AccountPage.jsx'));
 const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
@@ -37,13 +31,23 @@ const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.jsx'));
 const CatalogPage = lazy(() => import('@/pages/CatalogPage.jsx'));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage.jsx'));
 
+// --- Layout y Páginas de Admin ---
+const AdminLayout = lazy(() => import('@/pages/AdminLayout.jsx'));
+const AdminDashboardPage = lazy(() => import('@/pages/AdminDashboardPage.jsx'));
+const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage.jsx'));
+const AdminProductFormPage = lazy(() => import('@/pages/AdminProductFormPage.jsx'));
+const AdminProductVariantsPage = lazy(() => import('@/pages/AdminProductVariantsPage.jsx'));
+const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage.jsx'));
+const AdminOrderDetailPage = lazy(() => import('@/pages/AdminOrderDetailPage.jsx'));
+const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage.jsx'));
+
+
 const AppContent = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // --- ¡ACÁ ESTÁ LA JUGADA MAESTRA! ---
-  const logoRef = useRef(null); // 1. Creamos una referencia para el logo del navbar.
-  const [logoPosition, setLogoPosition] = useState(null); // 2. Un estado para guardar sus coordenadas.
+  const logoRef = useRef(null);
+  const [logoPosition, setLogoPosition] = useState(null);
 
   const [isCartNotificationOpen, setIsCartNotificationOpen] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
@@ -54,11 +58,9 @@ const AppContent = () => {
     checkAuth();
   }, [checkAuth]);
   
-  // 3. Este efecto se encarga de medir la posición del logo y guardarla.
   useEffect(() => {
     const updatePosition = () => {
       if (logoRef.current) {
-        // Usamos requestAnimationFrame para asegurarnos que el navegador ya pintó todo
         requestAnimationFrame(() => {
             if (logoRef.current) {
                  setLogoPosition(logoRef.current.getBoundingClientRect());
@@ -67,12 +69,10 @@ const AppContent = () => {
       }
     };
 
-    // Lo medimos la primera vez y cada vez que cambia el tamaño de la ventana o se scrollea.
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
 
-    // Limpiamos el chiquero cuando el componente se va.
     return () => {
         window.removeEventListener('resize', updatePosition);
         window.removeEventListener('scroll', updatePosition);
@@ -115,7 +115,7 @@ const AppContent = () => {
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
         onOpenSearch={handleOpenSearch}
-        ref={logoRef} // 4. Le pasamos la referencia al Navbar para que se la ponga al logo.
+        ref={logoRef}
       />
       <Suspense fallback={<Spinner message="Cargando página..." />}>
         <Routes>
@@ -142,7 +142,9 @@ const AppContent = () => {
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failure" element={<PaymentFailurePage />} />
             <Route path="/payment/pending" element={<PaymentPendingPage />} />
-            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
+
+            {/* --- RUTA DE ADMIN CORREGIDA --- */}
+            <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="products" element={<AdminProductsPage />} />
                 <Route path="products/new" element={<AdminProductFormPage />} />
@@ -159,7 +161,7 @@ const AppContent = () => {
       <DropdownMenu 
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
-        logoPosition={logoPosition} // 5. ¡Y acá le pasamos la posición al menú desplegable!
+        logoPosition={logoPosition}
       />
       
       {isCartNotificationOpen && <CartNotificationModal item={addedItem} onClose={handleCloseCartNotification} />}

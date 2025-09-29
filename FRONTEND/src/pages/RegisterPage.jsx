@@ -1,7 +1,9 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '../api/authApi'; // 1. Importar la nueva función de API
-import { NotificationContext } from '../context/NotificationContext'; // 2. Importar el contexto de notificación
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { registerUser, loginUser } from '../api/authApi'; // Import both
+import { useAuthStore } from '../stores/useAuthStore'; // Import store
+import { mergeCartAPI } from '../api/cartApi'; // Import merge
+import { NotificationContext } from '../context/NotificationContext';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -14,9 +16,10 @@ const RegisterPage = () => {
     acceptPrivacy: false,
   });
   
-  // 3. Usaremos el contexto para errores y éxito, no estados locales
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
+  const location = useLocation(); // Get location
+  const { login } = useAuthStore(); // Get login action
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -46,14 +49,25 @@ const RegisterPage = () => {
         },
       };
 
-      // 4. Usar la función de API centralizada
+      // 1. Register the user
       await registerUser(apiPayload);
 
-      notify('¡Cuenta creada con éxito! Serás redirigido al login.', 'success');
+      // 2. Automatically log them in
+      const loginData = await loginUser(formData.email, formData.password);
+      await login(loginData.access_token);
+
+      // 3. Merge the cart
+      const guestSessionId = localStorage.getItem('guestSessionId');
+      if (guestSessionId) {
+        await mergeCartAPI(guestSessionId);
+        localStorage.removeItem('guestSessionId');
+      }
+
+      notify('¡Cuenta creada con éxito!', 'success');
       
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      // 4. Redirect
+      const from = location.state?.from || '/';
+      navigate(from, { replace: true });
 
     } catch (err) {
       const errorMessage = err.detail || 'Ocurrió un error al registrar la cuenta.';

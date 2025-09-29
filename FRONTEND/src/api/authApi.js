@@ -1,3 +1,5 @@
+// En FRONTEND/src/api/authApi.js
+
 import axiosClient from '../hooks/axiosClient';
 
 export const loginUser = async (email, password) => {
@@ -38,9 +40,15 @@ export const forgotPasswordAPI = async (email) => {
   }
 };
 
-export const resetPasswordAPI = async (token, new_password) => {
+// --- ¡ACÁ ESTÁ EL ARREGLO POSTA! ---
+export const resetPasswordAPI = async (token, newPassword) => {
   try {
-    const response = await axiosClient.post('/auth/reset-password', { token, new_password });
+    // La URL ahora incluye el token al final, como espera el backend.
+    // Y en el cuerpo de la petición, mandamos solo la nueva contraseña.
+    const response = await axiosClient.post(
+      `/auth/reset-password/${token}`, 
+      { new_password: newPassword }
+    );
     return response.data;
   } catch (error) {
     console.error('Error en reset password:', error.response?.data?.detail || error.message);

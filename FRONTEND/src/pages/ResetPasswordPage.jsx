@@ -3,6 +3,7 @@ import React, { useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../context/NotificationContext';
 import { resetPasswordAPI } from '../api/authApi';
+import '../style.css'; // <-- ¡ESTA ES LA LÍNEA CLAVE QUE ARREGLA TODO!
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
@@ -15,7 +16,7 @@ const ResetPasswordPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      notify('Passwords do not match.', 'error');
+      notify('Las contraseñas no coinciden.', 'error');
       return;
     }
     setLoading(true);
@@ -25,7 +26,7 @@ const ResetPasswordPage = () => {
       notify(data.message, 'success');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      notify(err.detail || 'An error occurred. The token may be invalid or expired.', 'error');
+      notify(err.detail || 'Ocurrió un error. El token puede ser inválido o haber expirado.', 'error');
     } finally {
       setLoading(false);
     }
@@ -33,10 +34,10 @@ const ResetPasswordPage = () => {
 
   return (
     <main className="login-page-container" style={{ maxWidth: '500px', margin: '0 auto' }}>
-      <h1 className="form-title">CREATE NEW PASSWORD</h1>
+      <h1 className="form-title">CREAR NUEVA CONTRASEÑA</h1>
       <form onSubmit={handleSubmit} className="login-form">
         <div className="input-group">
-          <label htmlFor="password">NEW PASSWORD</label>
+          <label htmlFor="password">NUEVA CONTRASEÑA</label>
           <input
             type="password"
             id="password"
@@ -47,7 +48,7 @@ const ResetPasswordPage = () => {
           />
         </div>
         <div className="input-group">
-          <label htmlFor="confirmPassword">CONFIRM PASSWORD</label>
+          <label htmlFor="confirmPassword">CONFIRMAR CONTRASEÑA</label>
           <input
             type="password"
             id="confirmPassword"
@@ -58,7 +59,7 @@ const ResetPasswordPage = () => {
           />
         </div>
         <button type="submit" className="form-button" disabled={loading} style={{ marginTop: '1.5rem' }}>
-          {loading ? 'UPDATING...' : 'UPDATE PASSWORD'}
+          {loading ? 'ACTUALIZANDO...' : 'ACTUALIZAR CONTRASEÑA'}
         </button>
       </form>
     </main>

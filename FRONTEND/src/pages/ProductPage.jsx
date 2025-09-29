@@ -37,27 +37,37 @@ const ProductPage = ({ onOpenCartModal, onSetAddedItem }) => {
     useEffect(() => {
         const fetchProductData = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const data = await getProductById(productId);
+                if (!data) {
+                    throw new Error('Producto no encontrado.');
+                }
                 setProduct(data);
 
                 const imageUrls = getSafeImageUrls(data.urls_imagenes);
                 setAllImageUrls(imageUrls);
                 setMainImage(imageUrls[0]);
 
-                // Al cargar, seleccionamos el primer color disponible por defecto
                 if (data.variantes && data.variantes.length > 0) {
-                    const firstColor = data.variantes[0].color;
-                    setSelectedColor(firstColor);
-                    // Y el primer talle disponible para ESE color
-                    const firstSizeForFirstColor = data.variantes.find(v => v.color === firstColor && v.cantidad_en_stock > 0);
-                    if (firstSizeForFirstColor) {
-                        setSelectedSize(firstSizeForFirstColor.tamanio);
+                    const firstAvailableVariant = data.variantes.find(v => v.cantidad_en_stock > 0);
+                    if (firstAvailableVariant) {
+                        const firstColor = firstAvailableVariant.color;
+                        setSelectedColor(firstColor);
+                        
+                        const firstSizeForColor = data.variantes.find(v => v.color === firstColor && v.cantidad_en_stock > 0);
+                        if (firstSizeForColor) {
+                            setSelectedSize(firstSizeForColor.tamanio);
+                        } else {
+                            setSelectedSize(null);
+                        }
+                    } else {
+                        setSelectedColor(null);
+                        setSelectedSize(null);
                     }
                 }
-
             } catch (err) {
-                const errorMessage = err.detail || 'Could not find the product.';
+                const errorMessage = err?.response?.data?.detail || err.message || 'No se pudo encontrar el producto.';
                 setError(errorMessage);
                 notify(errorMessage, 'error');
             } finally {
@@ -123,15 +133,20 @@ const ProductPage = ({ onOpenCartModal, onSetAddedItem }) => {
 
     if (loading) return <Spinner message="Loading product..." />;
     if (error) return <div className="error-container" style={{ textAlign: 'center', padding: '5rem' }}><h1>Error: {error}</h1></div>;
-    if (!product) return <div style={{ textAlign: 'center', padding: '5rem' }}><h1>Product not found.</h1></div>;
+    if (!product) return <div style={{ textAlign: 'center', padding: '5rem' }}><h1>Producto no encontrado.</h1></div>;
     
     const isOutOfStock = availableColors.length === 0;
     
     const formatPrice = (price) => {
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency', currency: 'ARS',
-          minimumFractionDigits: 0, maximumFractionDigits: 0,
-        }).format(price).replace("ARS", "$").trim();
+        if (typeof price !== 'number') {
+            return '$--';
+        }
+        return new Intl.NumberFormat('es-AR', {
+          style: 'currency',
+          currency: 'ARS',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(price);
     };
 
     return (
@@ -142,13 +157,34 @@ const ProductPage = ({ onOpenCartModal, onSetAddedItem }) => {
                     <div className="main-image-container" style={{ marginBottom: '1rem' }}>
                       <img src={transformCloudinaryUrl(mainImage, 600)} alt={product.nombre} style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
                     </div>
-                    {/* ... thumbnails ... */}
+                    {allImageUrls.length > 1 && (
+                        <div className="thumbnail-container" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          {allImageUrls.map((url, index) => (
+                            <div
+                              key={index}
+                              className="thumbnail-item"
+                              onClick={() => setMainImage(url)}
+                              style={{
+                                cursor: 'pointer',
+                                border: mainImage === url ? '2px solid #000' : '2px solid transparent',
+                                padding: '2px'
+                              }}
+                            >
+                              <img
+                                src={transformCloudinaryUrl(url, 100)}
+                                alt={`Thumbnail ${index + 1}`}
+                                style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                    )}
                   </div>
                 </div>
                 
                 <div className="product-info-panel-full" style={{ flexBasis: '55%', paddingLeft: '3rem' }}>
                     <h1 className="product-name">{product.nombre}</h1>
-                    <p className="product-price">{formatPrice(product.precio)} ARS</p>
+                    <p className="product-price">{formatPrice(product.precio)}</p>
                     
                     {/* --- SELECCIÓN DE COLOR --- */}
                     <div className="product-selector">

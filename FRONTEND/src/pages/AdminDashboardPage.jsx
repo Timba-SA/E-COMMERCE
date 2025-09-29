@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { 
-    getKpisAPI, 
-    getSalesOverTimeAPI, 
-    getExpensesByCategoryAPI 
+import {
+    getKpisAPI,
+    getSalesOverTimeAPI,
+    getExpensesByCategoryAPI
 } from '../api/adminApi';
 import Spinner from '../components/common/Spinner';
 import AdminCharts from '../components/admin/AdminCharts';
@@ -23,7 +24,7 @@ const AdminDashboardPage = () => {
           getSalesOverTimeAPI(),
           getExpensesByCategoryAPI()
         ]);
-        
+
         setKpis(kpisResponse);
         setSalesData(salesResponse);
         setExpensesData(expensesResponse);
@@ -41,12 +42,12 @@ const AdminDashboardPage = () => {
   if (loading) return <Spinner message="Cargando dashboard..." />;
 
   return (
-    <div>
-        <h1>Bienvenido al Panel de Administrador</h1>
+    <>
+        <h1>Dashboard</h1>
         <p>Desde acá vas a poder controlar toda la magia de VOID.</p>
-        
-        {error && <p className="error-message" style={{color: 'red'}}>Error: {error}</p>}
-        
+
+        {error && <p style={{color: 'red'}}>Error: {error}</p>}
+
         {kpis && (
           <div className="dashboard-widgets">
             <div className="widget">
@@ -82,7 +83,7 @@ const AdminDashboardPage = () => {
         <div className="dashboard-charts-section">
           <AdminCharts salesData={salesData} expensesData={expensesData} />
         </div>
-    </div>
+    </>
   );
 };
 

@@ -1,27 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProducts } from '../api/productsApi';
+import { getCategories } from '../api/categoriesApi';
 import FilterPanel from '@/components/common/FilterPanel.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
+import ProductCard from '@/components/products/ProductCard.jsx';
 
-const ProductCard = ({ product }) => {
-    const imageUrl = product.urls_imagenes?.[0] || '/img/placeholder.jpg';
-    const formatPrice = (price) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price).replace("ARS", "$").trim();
-
-    return (
-        <div className="catalog-product-card">
-            <Link to={`/product/${product.id}`} className="catalog-product-link">
-                <div className="catalog-product-image-container">
-                    <img src={imageUrl} alt={product.nombre} className="catalog-product-image"/>
-                </div>
-                <div className="catalog-product-info">
-                    <h3 className="catalog-product-name">{product.nombre}</h3>
-                    <p className="catalog-product-price">{formatPrice(product.precio)}</p>
-                </div>
-            </Link>
-        </div>
-    );
-};
+// 1. DEFINIMOS LAS CATEGORÍAS DE HOMBRE, IGUAL QUE EN EL MENÚ.
+const MENSWEAR_CATEGORIES = ['hoodies', 'jackets', 'shirts', 'pants'];
 
 const ProductCardSkeleton = () => (
     <div className="catalog-product-card">
@@ -37,6 +23,7 @@ const CatalogPage = () => {
     const { categoryName } = useParams();
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -45,25 +32,61 @@ const CatalogPage = () => {
         precio_min: 0,
         precio_max: 200000,
         sort_by: 'nombre_asc',
-        color: [], // <-- ¡IMPORTANTE! Lo inicializamos como una lista vacía.
+        color: [],
+        categoria_id: '',
         skip: 0,
         limit: 12,
     });
+
+    // 2. LÓGICA MEJORADA PARA MANEJAR "MENSWEAR" Y "WOMENSWEAR"
+    useEffect(() => {
+        const fetchCategoriesAndSetFilter = async () => {
+            try {
+                const allCategories = await getCategories();
+                setCategories(allCategories);
+
+                if (categoryName) {
+                    let categoryIds = '';
+
+                    if (categoryName.toLowerCase() === 'menswear') {
+                        const menswearCats = allCategories.filter(c => MENSWEAR_CATEGORIES.includes(c.nombre.toLowerCase()));
+                        categoryIds = menswearCats.map(c => c.id).join(',');
+                    } else if (categoryName.toLowerCase() === 'womenswear') {
+                        const womenswearCats = allCategories.filter(c => !MENSWEAR_CATEGORIES.includes(c.nombre.toLowerCase()));
+                        categoryIds = womenswearCats.map(c => c.id).join(',');
+                    } else {
+                        const currentCategory = allCategories.find(c => c.nombre.toLowerCase() === categoryName.toLowerCase());
+                        if (currentCategory) {
+                            categoryIds = currentCategory.id.toString();
+                        }
+                    }
+                    
+                    // Solo actualizamos si encontramos IDs, sino, queda vacío para mostrar todo
+                    setFilters(prev => ({ ...prev, categoria_id: categoryIds, skip: 0 }));
+                } else {
+                    // Si no hay categoryName, limpiamos el filtro para mostrar todos los productos
+                    setFilters(prev => ({ ...prev, categoria_id: '', skip: 0 }));
+                }
+            } catch (err) {
+                console.error("Failed to fetch categories", err);
+            }
+        };
+        fetchCategoriesAndSetFilter();
+    }, [categoryName]);
 
     const fetchProducts = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const params = { ...filters };
-            if (categoryName) params.categoria = categoryName;
-
-            // Preparamos los filtros de array para la API
+            
             if (params.talle.length > 0) params.talle = params.talle.join(',');
             else delete params.talle;
             
-            // --- ¡ACÁ ESTÁ EL ARREGLO! ---
             if (params.color.length > 0) params.color = params.color.join(',');
             else delete params.color;
+
+            if (!params.categoria_id) delete params.categoria_id;
 
             const data = await getProducts(params);
             setProducts(Array.isArray(data) ? data : []);
@@ -72,12 +95,15 @@ const CatalogPage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [categoryName, filters]);
+    }, [filters]);
 
     useEffect(() => {
-        fetchProducts();
+        // Solo fetcheamos si ya tenemos las categorías cargadas y el filtro de ID definido
+        if (categories.length > 0) {
+            fetchProducts();
+        }
         window.scrollTo(0, 0);
-    }, [fetchProducts]);
+    }, [fetchProducts, categories]);
 
     useEffect(() => {
         document.body.style.overflow = isFilterPanelOpen ? 'hidden' : 'auto';
@@ -89,11 +115,19 @@ const CatalogPage = () => {
     
     const toggleFilterPanel = () => setIsFilterPanelOpen(!isFilterPanelOpen);
 
+    // 3. MEJORAMOS EL TÍTULO DE LA PÁGINA
+    const getPageTitle = () => {
+        if (!categoryName) return 'CATALOG';
+        if (categoryName.toLowerCase() === 'menswear') return 'MENSWEAR';
+        if (categoryName.toLowerCase() === 'womenswear') return 'WOMENSWEAR';
+        return categoryName.replace('-', ' ').toUpperCase();
+    };
+
     return (
         <>
             <main className="catalog-container">
                 <div className="catalog-header">
-                    <h1 className="catalog-title">{categoryName?.replace('-', ' ') || 'CATALOG'}</h1>
+                    <h1 className="catalog-title">{getPageTitle()}</h1>
                     <div className="catalog-controls">
                         <button onClick={toggleFilterPanel} className="filters-link">FILTERS &gt;</button>
                     </div>
@@ -107,7 +141,7 @@ const CatalogPage = () => {
                   <p className="loading-text">{error}</p>
                 ) : products.length > 0 ? (
                   <div className="catalog-product-grid">
-                      {products.map(product => <ProductCard product={product} key={product.id} />)}
+                      {products.map(product => <ProductCard product={product} key={product.id || product._id} />)}
                   </div>
                 ) : (
                     <p className="loading-text">No products found with these filters.</p>
@@ -120,6 +154,7 @@ const CatalogPage = () => {
                 onClose={toggleFilterPanel} 
                 onFilterChange={handleFilterChange}
                 initialFilters={filters}
+                categories={categories}
             />
         </>
     );
