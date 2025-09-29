@@ -1,67 +1,48 @@
 # En backend/schemas/product_schemas.py
+# ESTE ARCHIVO ES PARA TU BASE DE DATOS SQL (POSTGRESQL, MYSQL, ETC.)
 
-from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
-from typing import List, Optional, Annotated
-from bson import ObjectId
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional
 
-# --- Este es el traductor mágico para que Pydantic entienda el _id de Mongo ---
-PyObjectId = Annotated[str, BeforeValidator(str)]
-
-class VarianteProducto(BaseModel):
-    id: int # Asumimos que las variantes sí tienen un ID numérico simple
-    producto_id: int
+# --- Esquemas para Variantes de Producto (SQL) ---
+class VarianteProductoBase(BaseModel):
     tamanio: str
     color: str
-    cantidad_en_stock: int
+    cantidad_en_stock: int = Field(..., ge=0)
 
+class VarianteProductoCreate(VarianteProductoBase):
+    pass
+
+class VarianteProducto(VarianteProductoBase):
+    id: int
+    producto_id: int
     model_config = ConfigDict(from_attributes=True)
 
-
+# --- Esquemas para Productos (SQL) ---
 class ProductBase(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
-    precio: float
+    precio: float = Field(..., gt=0)
     sku: str
     urls_imagenes: Optional[List[str]] = []
     material: Optional[str] = None
-    talle: Optional[str] = None
-    color: Optional[str] = None
     stock: int = Field(..., ge=0)
     categoria_id: int
-    variantes: List[VarianteProducto] = []
-
 
 class ProductCreate(ProductBase):
     pass
 
-
 class ProductUpdate(BaseModel):
     nombre: Optional[str] = None
-    descripcion: Optional[str] = None
-    precio: Optional[float] = None
-    sku: Optional[str] = None
-    urls_imagenes: Optional[List[str]] = None
-    material: Optional[str] = None
-    talle: Optional[str] = None
-    color: Optional[str] = None
-    stock: Optional[int] = Field(None, ge=0)
-    categoria_id: Optional[int] = None
+    # ... otros campos opcionales ...
 
-
-# --- ACÁ ESTÁ EL CAMBIO CLAVE ---
-# Esta es la plantilla para mostrar un producto de MongoDB
 class Product(ProductBase):
-    # Le decimos que el campo "_id" de mongo lo mapee a "id" como un string
-    id: PyObjectId = Field(alias="_id", default=None)
+    id: int
+    variantes: List[VarianteProducto] = []
+    model_config = ConfigDict(from_attributes=True)
 
-    model_config = ConfigDict(
-        populate_by_name=True,  # Permite usar el alias "_id"
-        arbitrary_types_allowed=True, # Necesario para ObjectId
-        json_encoders={ObjectId: str} # Le dice cómo convertir el ObjectId a texto
-    )
-
+# --- Esquema para Categorías (SQL) ---
 class Categoria(BaseModel):
     id: int
     nombre: str
-
     model_config = ConfigDict(from_attributes=True)

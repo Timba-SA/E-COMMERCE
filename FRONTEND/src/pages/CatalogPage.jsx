@@ -4,28 +4,10 @@ import { getProducts } from '../api/productsApi';
 import { getCategories } from '../api/categoriesApi';
 import FilterPanel from '@/components/common/FilterPanel.jsx';
 import Spinner from '@/components/common/Spinner.jsx';
+import ProductCard from '@/components/products/ProductCard.jsx';
 
 // 1. DEFINIMOS LAS CATEGORÍAS DE HOMBRE, IGUAL QUE EN EL MENÚ.
 const MENSWEAR_CATEGORIES = ['hoodies', 'jackets', 'shirts', 'pants'];
-
-const ProductCard = ({ product }) => {
-    const imageUrl = product.urls_imagenes?.[0] || '/img/placeholder.jpg';
-    const formatPrice = (price) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price).replace("ARS", "$").trim();
-
-    return (
-        <div className="catalog-product-card">
-            <Link to={`/product/${product.id}`} className="catalog-product-link">
-                <div className="catalog-product-image-container">
-                    <img src={imageUrl} alt={product.nombre} className="catalog-product-image"/>
-                </div>
-                <div className="catalog-product-info">
-                    <h3 className="catalog-product-name">{product.nombre}</h3>
-                    <p className="catalog-product-price">{formatPrice(product.precio)}</p>
-                </div>
-            </Link>
-        </div>
-    );
-};
 
 const ProductCardSkeleton = () => (
     <div className="catalog-product-card">
@@ -159,7 +141,7 @@ const CatalogPage = () => {
                   <p className="loading-text">{error}</p>
                 ) : products.length > 0 ? (
                   <div className="catalog-product-grid">
-                      {products.map(product => <ProductCard product={product} key={product.id} />)}
+                      {products.map(product => <ProductCard product={product} key={product.id || product._id} />)}
                   </div>
                 ) : (
                     <p className="loading-text">No products found with these filters.</p>

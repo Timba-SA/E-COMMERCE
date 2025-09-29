@@ -47,3 +47,6 @@ class ForgotPasswordRequest(BaseModel):
 # Sacamos el token de acá porque ya no viaja en el cuerpo del mensaje.
 class ResetPasswordRequest(BaseModel):
     new_password: str
+
+class MergeCartRequest(BaseModel):
+    guest_session_id: str

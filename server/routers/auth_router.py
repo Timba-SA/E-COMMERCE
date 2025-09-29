@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pymongo.database import Database
 from datetime import datetime, timedelta, timezone
 import secrets
+from bson import ObjectId
 
 from schemas import user_schemas
 from utils import security
@@ -143,3 +144,57 @@ async def reset_password(
 @router.get("/me", response_model=user_schemas.UserOut, summary="Obtener datos del usuario actual")
 async def read_users_me(current_user: user_schemas.UserOut = Depends(auth_service.get_current_user)):
     return current_user
+
+@router.post("/merge-cart", status_code=status.HTTP_200_OK, summary="Merge guest cart with user cart")
+async def merge_guest_cart(
+    request: user_schemas.MergeCartRequest,
+    db: Database = Depends(get_db_nosql),
+    current_user: user_schemas.UserOut = Depends(auth_service.get_current_user)
+):
+    guest_session_id = request.guest_session_id
+    user_id = ObjectId(current_user.id)
+
+    # Find the guest cart
+    guest_cart = await db.carts.find_one({"guest_session_id": guest_session_id})
+    if not guest_cart or not guest_cart.get("items"):
+        # No guest cart to merge, so we're done.
+        return {"message": "No guest cart to merge."}
+
+    # Find the user's cart
+    user_cart = await db.carts.find_one({"user_id": user_id})
+
+    if not user_cart:
+        # User has no cart, so we can just assign the guest cart to them.
+        await db.carts.update_one(
+            {"_id": guest_cart["_id"]},
+            {
+                "$set": {"user_id": user_id},
+                "$unset": {"guest_session_id": ""}
+            }
+        )
+        return {"message": "Guest cart assigned to user."}
+    else:
+        # Both user and guest have carts, merge them.
+        guest_items = guest_cart.get("items", [])
+        user_items = user_cart.get("items", [])
+        
+        user_items_map = {str(item["variante_id"]): item for item in user_items}
+
+        for guest_item in guest_items:
+            guest_variant_id = str(guest_item["variante_id"])
+            if guest_variant_id in user_items_map:
+                # Item exists, update quantity
+                user_items_map[guest_variant_id]["quantity"] += guest_item["quantity"]
+            else:
+                # New item, add it to the user's cart
+                user_items.append(guest_item)
+        
+        await db.carts.update_one(
+            {"_id": user_cart["_id"]},
+            {"$set": {"items": user_items}}
+        )
+        
+        # Delete the guest cart
+        await db.carts.delete_one({"_id": guest_cart["_id"]})
+        
+        return {"message": "Carts merged successfully."}

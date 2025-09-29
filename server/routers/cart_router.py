@@ -19,8 +19,8 @@ def get_session_identifier(current_user: Optional[dict], guest_id: Optional[str]
     if current_user:
         # --- FIX ---
         # El 'current_user' es el documento de la DB,
-        # por lo tanto, usamos '_id'
-        return {"user_id": str(current_user["_id"])} 
+        # por lo tanto, usamos '_id' que ya es un ObjectId
+        return {"user_id": current_user["_id"]} 
     
     if guest_id:
         return {"guest_session_id": guest_id}
